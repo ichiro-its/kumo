@@ -1,3 +1,23 @@
+# Copyright (c) 2021 Ichiro ITS
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+# THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+
 import asyncio
 import json
 import rclpy
@@ -5,6 +25,7 @@ from rclpy.node import Node
 from rosidl_runtime_py.utilities import get_message
 import websockets
 from websockets import WebSocketServerProtocol
+
 
 class Bridge:
 
@@ -23,10 +44,8 @@ class Bridge:
         for key in self.nodes:
             self.nodes[key].destroy_node()
 
-
     def send(self, message):
         self.messages.append(json.dumps(message))
-
 
     async def listen(self):
         while True:
@@ -50,7 +69,6 @@ class Bridge:
                 return
             except Exception as e:
                 print('Something happened...', e)
-
 
     def handle_request(self, request: dict):
         if request['type'] == 'CREATE_NODE':
@@ -93,14 +111,12 @@ class Bridge:
                     'id': request['id'],
                     'error': str(e)})
 
-
     def create_node(self, node_name: str) -> int:
         node_id = self.nodes_it
         self.nodes_it += 1
 
         self.nodes[node_id] = Node(node_name)
         return node_id
-
 
     def create_subscription(self, node: Node, topic_name: str, message_type) -> int:
         subscription_id = self.subscriptions_it
@@ -133,6 +149,7 @@ async def on_connect(websocket: WebSocketServerProtocol, path: str):
     bridge = Bridge(websocket)
     await bridge.listen()
 
+
 def main(args=None):
     rclpy.init(args=args)
 
@@ -143,6 +160,7 @@ def main(args=None):
     asyncio.get_event_loop().run_forever()
 
     rclpy.shutdown()
+
 
 if __name__ == '__main__':
     main()
