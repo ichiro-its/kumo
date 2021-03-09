@@ -11,34 +11,41 @@ class BaseHandler:
         self.id = str(BaseHandler.id_counter)
         BaseHandler.id_counter += 1
 
+        self.active = True
+
         self.parent = None
         self.childs: Dict[str, BaseHandler] = {}
 
         self.messages: List[Message] = []
 
-    def destroy(self) -> None:
-        if self.parent is not None:
-            parent = self.parent
-            self.parent = None
+    def destroy(self) -> bool:
+        if self.active == True:
+            self.active = False
 
-            parent.detach(self.id)
-
-        for child in self.childs.values():
-            child: BaseHandler = child
-            if child is not None:
-                child.parent = None
+            for child in self.childs.values():
+                child: BaseHandler = child
                 child.destroy()
+
+            return True
+
+        return False
 
     def attach(self, child) -> None:
         child.parent = self
         self.childs[child.id] = child
 
+        if self.active == False:
+            child.destroy()
+
     def detach(self, id: str) -> None:
         child: BaseHandler = self.childs.get(id, None)
+        del self.childs[id]
+
         if child is not None:
-            if child.parent is not None:
-                child.parent = None
+            if child.active == True:
                 child.destroy()
+
+            child.parent = None
 
     def send(self, message: Message) -> None:
         self.messages.append(message)
@@ -53,16 +60,23 @@ class BaseHandler:
         self.send(Message(request.type, {'error': str(error)}, request.id))
 
     async def process(self) -> None:
-        for child in self.childs.values():
+        inactives = []
+        for id, child in self.childs.items():
             child: BaseHandler = child
-            if child is not None:
-                await child.process()
 
-                self.messages = self.messages + child.messages
-                child.messages.clear()
+            self.messages = self.messages + child.messages
+            child.messages.clear()
+
+            if child.active:
+                await child.process()
+            else:
+                inactives.append(id)
+
+        for id in inactives:
+            self.detach(id)
 
     async def handle_message(self, message: Message) -> None:
         for child in self.childs.values():
             child: BaseHandler = child
-            if child is not None:
+            if child.active:
                 await child.handle_message(message)

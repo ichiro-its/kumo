@@ -19,10 +19,9 @@ class NodeHandler(BaseHandler):
         self.logger = get_logger('node_handler')
 
     def destroy(self) -> None:
-        super().destroy()
-
-        self.node.destroy_node()
-        self.logger.warn('Node %s destroyed' % self.id)
+        if super().destroy():
+            self.logger.warn('Destroying Node %s...' % self.id)
+            self.node.destroy_node()
 
     async def process(self) -> None:
         try:

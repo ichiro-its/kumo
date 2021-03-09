@@ -16,10 +16,9 @@ class SubscriptionHandler(BaseHandler):
         self.logger = get_logger('node_handler')
 
     def destroy(self) -> None:
-        super().destroy()
-
-        self.subscription.destroy()
-        self.logger.warn('Subscription %s destroyed' % self.id)
+        if super().destroy():
+            self.logger.warn('Destroying Subscription %s...' % self.id)
+            self.subscription.destroy()
 
     async def handle_message(self, message: Message) -> None:
         if message.type == MessageType.DESTROY_SUBSCRIPTION:
