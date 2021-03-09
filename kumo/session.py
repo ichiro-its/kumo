@@ -19,9 +19,7 @@
 # THE SOFTWARE.
 
 import asyncio
-import json
 from rclpy.logging import get_logger
-from typing import Dict
 import websockets
 
 from kumo.handlers.context_handler import ContextHandler

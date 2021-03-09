@@ -43,7 +43,7 @@ class Bridge:
 
         try:
             self.logger.info('Starting bridge on %s with port %d...'
-                        % (self.host, self.port))
+                             % (self.host, self.port))
 
             websocket = websockets.serve(self.listen, self.host, self.port)
 
