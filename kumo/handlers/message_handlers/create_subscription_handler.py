@@ -27,7 +27,7 @@ class CreateSubscriptionHandler(MessageHandler):
     def __init__(self, subscription_handler: SubscriptionHandler):
         super().__init__('CREATE_SUBSCRIPTION')
 
-        self.subscription_handler: SubscriptionHandler = subscription_handler
+        self.subscription_handler = subscription_handler
 
     def handle(self, id: str, content: dict) -> None:
         super().handle(id, content)

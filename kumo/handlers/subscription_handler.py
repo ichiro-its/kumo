@@ -58,3 +58,10 @@ class SubscriptionHandler():
         self.subscriptions[sub_id] = subscription
 
         return sub_id, subscription
+
+    def destroy(self, subscription_id: str) -> str:
+        subscription = self.get_by_id(subscription_id)
+
+        subscription.destroy()
+
+        return subscription_id

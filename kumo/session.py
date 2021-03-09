@@ -23,11 +23,13 @@ import json
 from typing import Dict
 import websockets
 
-from .handlers import (CreateNodeHandler, CreateSubscriptionHandler, MessageHandler,
-                       NodeHandler, SubscriptionHandler)
+from .handlers import (CreateNodeHandler, CreateSubscriptionHandler,
+                       DestroySubscriptionHandler, MessageHandler, NodeHandler,
+                       SubscriptionHandler)
 
 WebSocket = websockets.WebSocketServerProtocol
 CreateSubHandler = CreateSubscriptionHandler
+DestroySubHandler = DestroySubscriptionHandler
 SubHandler = SubscriptionHandler
 
 
@@ -42,6 +44,7 @@ class Session:
         self.message_handlers: Dict[str, MessageHandler] = {}
         for message_handler in [CreateNodeHandler(self.node_handler),
                                 CreateSubHandler(self.sub_handler),
+                                DestroySubHandler(self.sub_handler),
                                 self.sub_handler.sub_callback_handler]:
 
             self.message_handlers[message_handler.type] = message_handler

@@ -19,7 +19,7 @@
 # THE SOFTWARE.
 
 from .message_handlers import (CreateNodeHandler, CreateSubscriptionHandler,
-                               SubscriptionCallbackHandler)
+                               DestroySubscriptionHandler, SubscriptionCallbackHandler)
 
 from .message_handler import MessageHandler
 from .node_handler import NodeHandler
@@ -28,6 +28,7 @@ from .subscription_handler import SubscriptionHandler
 # Prevent unused import error
 CreateNodeHandler
 CreateSubscriptionHandler
+DestroySubscriptionHandler
 SubscriptionCallbackHandler
 MessageHandler
 NodeHandler

@@ -20,9 +20,11 @@
 
 from .create_node_handler import CreateNodeHandler
 from .create_subscription_handler import CreateSubscriptionHandler
+from .destroy_subscription_handler import DestroySubscriptionHandler
 from .subscription_callback_handler import SubscriptionCallbackHandler
 
 # Prevent unused import error
 CreateNodeHandler
 CreateSubscriptionHandler
+DestroySubscriptionHandler
 SubscriptionCallbackHandler
