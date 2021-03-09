@@ -27,7 +27,7 @@ class CreateNodeHandler(MessageHandler):
     def __init__(self, node_handler: NodeHandler):
         super().__init__('CREATE_NODE')
 
-        self.node_handler: NodeHandler = node_handler
+        self.node_handler = node_handler
 
     def handle(self, id: str, request: dict) -> None:
         super().handle(id, request)

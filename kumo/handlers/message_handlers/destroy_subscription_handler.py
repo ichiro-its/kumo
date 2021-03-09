@@ -18,43 +18,25 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-import rclpy
-from rclpy.node import Node
-from typing import Dict
+from ..message_handler import MessageHandler
+from ..subscription_handler import SubscriptionHandler
 
 
-class NodeHandler():
+class DestroySubscriptionHandler(MessageHandler):
 
-    def __init__(self):
+    def __init__(self, subscription_handler: SubscriptionHandler):
+        super().__init__('DESTROY_SUBSCRIPTION')
 
-        self.nodes: Dict[str, Node] = {}
-        self.counter: int = 0
+        self.subscription_handler = subscription_handler
 
-    def __del__(self):
-        for id, node in self.nodes.items():
-            try:
-                node.destroy_node()
-            except Exception as e:
-                print('Failed to destroy node with id %s,' % str, e)
+    def handle(self, id: str, content: dict) -> None:
+        super().handle(id, content)
 
-    def get_by_id(self, id: str) -> Node:
-        if id not in self.nodes:
-            raise Exception('Cannot find Node with id', id)
+        try:
+            sub_id = self.subscription_handler.destroy(content['subscription_id'])
 
-        return self.nodes[id]
+            self.response(id, {'subscription_id': sub_id})
 
-    def spin(self) -> None:
-        for id, node in self.nodes.items():
-            try:
-                rclpy.spin_once(node, timeout_sec=0.01)
-            except Exception as e:
-                print('Failed to spin node with id %s, %s' % (id, e))
-
-    def create(self, name: str) -> (str, Node):
-        node_id = str(self.counter)
-        self.counter += 1
-
-        node = Node(name)
-        self.nodes[node_id] = node
-
-        return node_id, node
+        except Exception as e:
+            print('Failed to handle destroy subscription!', e)
+            self.response(id, {'error': str(e)})
