@@ -18,9 +18,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-from .server import Server
-from .session import Session
-
-# Prevent unused import error
-Server
-Session
+import kumo.bridge
+import kumo.message
+import kumo.session

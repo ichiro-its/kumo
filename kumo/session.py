@@ -20,71 +20,73 @@
 
 import asyncio
 import json
+from rclpy.logging import get_logger
 from typing import Dict
 import websockets
 
-from .handlers import (CreateNodeHandler, CreateSubscriptionHandler,
-                       DestroySubscriptionHandler, MessageHandler, NodeHandler,
-                       SubscriptionHandler)
+from kumo.handlers.context_handler import ContextHandler
+from kumo.message import Message, parse_message
 
 WebSocket = websockets.WebSocketServerProtocol
-CreateSubHandler = CreateSubscriptionHandler
-DestroySubHandler = DestroySubscriptionHandler
-SubHandler = SubscriptionHandler
 
 
 class Session:
 
+    id_counter: int = 0
+
     def __init__(self, websocket: WebSocket):
+        self.id = str(Session.id_counter)
+        Session.id_counter += 1
+
         self.websocket = websocket
+        self.logger = get_logger('session')
 
-        self.node_handler = NodeHandler()
-        self.sub_handler = SubHandler(self.node_handler)
+        self.context = ContextHandler()
 
-        self.message_handlers: Dict[str, MessageHandler] = {}
-        for message_handler in [CreateNodeHandler(self.node_handler),
-                                CreateSubHandler(self.sub_handler),
-                                DestroySubHandler(self.sub_handler),
-                                self.sub_handler.sub_callback_handler]:
+    def cleanup(self) -> None:
+        self.context.destroy()
 
-            self.message_handlers[message_handler.type] = message_handler
-
-    async def listen(self):
-        print('Session started!')
+    async def listen(self) -> None:
+        self.logger.info('Session %s started!' % self.id)
 
         while True:
             try:
-                self.node_handler.spin()
+                await self.context.process()
 
-                for message_handler in self.message_handlers.values():
-                    await message_handler.send(lambda message: self.websocket.send(message))
+                while len(self.context.messages) > 0:
+                    message: Message = self.context.messages.pop()
+                    await self.websocket.send(message.toString())
 
-                try:
-                    while True:
+                while True:
+                    try:
                         await self.handle_message()
 
-                except asyncio.TimeoutError:
-                    pass
+                    except asyncio.TimeoutError:
+                        break
 
-            except websockets.ConnectionClosed:
-                print('Session closed!')
-                return
+            except websockets.ConnectionClosed as e:
+                self.logger.warn('Session %s closed! %s' % (self.id, str(e)))
+                return self.cleanup()
+
+            except KeyboardInterrupt as e:
+                self.cleanup()
+                raise e
 
             except Exception as e:
-                print('Something happened!', e)
+                self.logger.error('Something happened on Session %s! %s'
+                                  % (self.id, str(e)))
 
     async def handle_message(self) -> None:
         message_string = await asyncio.wait_for(self.websocket.recv(), 0.01)
 
         try:
-            message = json.loads(message_string)
+            message = parse_message(message_string)
 
-            message_type = str(message['type'])
-            message_id = str(message['id'])
+            try:
+                await self.context.handle_message(message)
 
-            if message_type in self.message_handlers:
-                message_handler = self.message_handlers[message_type]
-                message_handler.handle(message_id, message)
+            except Exception as e:
+                self.logger.error('Failed to handle request! %s' % str(e))
 
         except Exception as e:
-            print('Failed to parse request!', e)
+            self.logger.error('Failed to parse request! %s' % str(e))
