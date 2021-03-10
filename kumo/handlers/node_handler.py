@@ -19,42 +19,55 @@
 # THE SOFTWARE.
 
 import rclpy
-from rclpy.node import Node
-from typing import Dict
+from rclpy.logging import get_logger
+from rosidl_runtime_py.utilities import get_message
+
+from kumo.handlers.base_handler import BaseHandler
+from kumo.handlers.subscription_handler import SubscriptionHandler
+from kumo.message import Message, MessageType
 
 
-class NodeHandler():
+class NodeHandler(BaseHandler):
 
-    def __init__(self):
+    def __init__(self, name: str):
+        super().__init__()
 
-        self.nodes: Dict[str, Node] = {}
-        self.counter: int = 0
+        self.node = rclpy.create_node(name)
 
-    def __del__(self):
-        for id, node in self.nodes.items():
+        self.logger = get_logger('node_handler')
+
+    def destroy(self) -> None:
+        if super().destroy():
+            self.logger.warn('Destroying Node %s...' % self.id)
+            self.node.destroy_node()
+
+    async def process(self) -> None:
+        try:
+            rclpy.spin_once(self.node, timeout_sec=0.01)
+
+        except Exception as e:
+            self.logger.error('Failed to spin Node %s! %s' % (id, e))
+
+        await super().process()
+
+    async def handle_message(self, message: Message) -> None:
+        if message.type == MessageType.CREATE_SUBSCRIPTION:
             try:
-                node.destroy_node()
+                return self.handle_create_subscription(message)
+
             except Exception as e:
-                print('Failed to destroy node with id %s,' % str, e)
+                self.logger.error('Failed to create a Subscription! %s' % str(e))
+                self.send_error_respond(message, e)
 
-    def get_by_id(self, id: str) -> Node:
-        if id not in self.nodes:
-            raise Exception('Cannot find Node with id', id)
+        await super().handle_message(message)
 
-        return self.nodes[id]
+    def handle_create_subscription(self, message: Message) -> None:
+        if message.content.get('node_id') == self.id:
+            handler = SubscriptionHandler(
+                self.node, get_message(message.content.get('message_type')),
+                message.content.get('topic_name'))
 
-    def spin(self) -> None:
-        for id, node in self.nodes.items():
-            try:
-                rclpy.spin_once(node, timeout_sec=0.01)
-            except Exception as e:
-                print('Failed to spin node with id %s, %s' % (id, e))
+            self.attach(handler)
 
-    def create(self, name: str) -> (str, Node):
-        node_id = str(self.counter)
-        self.counter += 1
-
-        node = Node(name)
-        self.nodes[node_id] = node
-
-        return node_id, node
+            self.logger.info('Subscription %s created!' % handler.id)
+            self.send_respond(message, {'subscription_id': handler.id})

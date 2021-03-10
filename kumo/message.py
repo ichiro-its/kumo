@@ -18,26 +18,38 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-from ..message_handler import MessageHandler
-from ..node_handler import NodeHandler
+from enum import Enum
+import json
 
 
-class CreateNodeHandler(MessageHandler):
+class MessageType(Enum):
+    CREATE_NODE = 'CREATE_NODE'
+    CREATE_SUBSCRIPTION = 'CREATE_SUBSCRIPTION'
+    DESTROY_SUBSCRIPTION = 'DESTROY_SUBSCRIPTION'
+    SUBSCRIPTION_MESSAGE = 'SUBSCRIPTION_MESSAGE'
 
-    def __init__(self, node_handler: NodeHandler):
-        super().__init__('CREATE_NODE')
 
-        self.node_handler = node_handler
+class Message:
 
-    def handle(self, id: str, request: dict) -> None:
-        super().handle(id, request)
+    id_counter: int = 0
 
-        try:
-            node_name: str = str(request['node_name'])
-            node_id, _ = self.node_handler.create(node_name)
+    def __init__(self, type: MessageType, content: dict = {}, id: str = None):
+        self.type = type
+        self.content = content
 
-            self.response(id, {'node_id': node_id})
+        if id is None:
+            self.id = str(Message.id_counter)
+            Message.id_counter += 1
+        else:
+            self.id = str(id)
 
-        except Exception as e:
-            print('Failed to handle create node!', e)
-            self.response(id, {'error': str(e)})
+    def toString(self) -> str:
+        message = {'type': self.type.value, 'id': self.id, 'content': self.content}
+        return json.dumps(message)
+
+
+def parse_message(message: str) -> Message:
+    message_json: dict = json.loads(message)
+    return Message(MessageType(message_json.get('type')),
+                   message_json.get('content', {}),
+                   message_json.get('id', None))

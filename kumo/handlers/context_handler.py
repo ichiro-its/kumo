@@ -18,27 +18,34 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-import asyncio
-import websockets
+from rclpy.logging import get_logger
 
-from .session import Session
+from kumo.handlers.base_handler import BaseHandler
+from kumo.handlers.node_handler import NodeHandler
+from kumo.message import Message, MessageType
 
-WebSocket = websockets.WebSocketServerProtocol
 
+class ContextHandler(BaseHandler):
 
-class Server:
+    def __init__(self):
+        super().__init__()
 
-    def __init__(self, host: str = 'localhost', port: int = 8080):
-        self.host = host
-        self.port = port
+        self.logger = get_logger('context_handler')
 
-    async def listen(self, websocket: WebSocket, path: str):
-        session = Session(websocket)
-        await session.listen()
+    async def handle_message(self, message: Message) -> None:
+        if message.type == MessageType.CREATE_NODE:
+            try:
+                return self.handle_create_node(message)
 
-    def run(self):
-        print('Starting server on %s with port %d...' % (self.host, self.port))
-        websocket = websockets.serve(self.listen, self.host, self.port)
+            except Exception as e:
+                self.logger.error('Failed to create a Node! %s' % str(e))
+                self.send_error_respond(message, e)
 
-        asyncio.get_event_loop().run_until_complete(websocket)
-        asyncio.get_event_loop().run_forever()
+        await super().handle_message(message)
+
+    def handle_create_node(self, message: Message) -> None:
+        handler = NodeHandler(message.content.get('node_name'))
+        self.attach(handler)
+
+        self.logger.info('Node %s created!' % handler.id)
+        self.send_respond(message, {'node_id': handler.id})

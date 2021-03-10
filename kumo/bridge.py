@@ -18,24 +18,46 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
+import asyncio
 import rclpy
+import websockets
 
-from .server import Server
+from kumo.session import Session
+
+WebSocket = websockets.WebSocketServerProtocol
 
 
-def main(args=None) -> int:
-    rclpy.init(args=args)
+class Bridge:
 
-    try:
+    def __init__(self, port: int, host: str):
+        self.port = port
+        self.host = host
 
-        server = Server()
-        server.run()
+        self.logger = rclpy.logging.get_logger('bridge')
 
-    except KeyboardInterrupt:
-        print("Keyboard interrupt!")
-        return 1
+    async def listen(self, websocket: WebSocket, path: str) -> None:
+        await Session(websocket).listen()
 
-    rclpy.shutdown()
+    def run(self) -> None:
+        rclpy.init()
+
+        try:
+            self.logger.info('Starting bridge on %s with port %d...'
+                             % (self.host, self.port))
+
+            websocket = websockets.serve(self.listen, self.host, self.port)
+
+            asyncio.get_event_loop().run_until_complete(websocket)
+            asyncio.get_event_loop().run_forever()
+
+        except KeyboardInterrupt as e:
+            self.logger.error('Keyboard interrupt! %s' % str(e))
+
+        rclpy.shutdown()
+
+
+def main():
+    Bridge(8080, 'localhost').run()
 
 
 if __name__ == '__main__':

@@ -18,50 +18,61 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-from rclpy.subscription import Subscription
-from rosidl_runtime_py.utilities import get_message
-from typing import Dict
+import json
+from rclpy.logging import get_logger
+from rclpy.node import Node, MsgType
 
-from .message_handlers.subscription_callback_handler import SubscriptionCallbackHandler
-from .node_handler import NodeHandler
-
-SubCallbackHandler = SubscriptionCallbackHandler
+from kumo.handlers.base_handler import BaseHandler
+from kumo.message import Message, MessageType
 
 
-class SubscriptionHandler():
+class SubscriptionHandler(BaseHandler):
 
-    def __init__(self, node_handler: NodeHandler):
-        self.node_handler = node_handler
-        self.sub_callback_handler = SubCallbackHandler()
+    def __init__(self, node: Node, message_type: MsgType, topic_name: str):
+        super().__init__()
 
-        self.subscriptions: Dict[str, Subscription] = {}
-        self.counter: int = 0
+        self.subscription = node.create_subscription(
+            message_type, topic_name, self.callback, 10)
 
-    def get_by_id(self, id: str) -> Subscription:
-        if id not in self.subscriptions:
-            raise Exception('Cannot find Subscriptions with Id', id)
+        self.logger = get_logger('node_handler')
 
-        return self.subscriptions[id]
+    def destroy(self) -> None:
+        if super().destroy():
+            self.logger.warn('Destroying Subscription %s...' % self.id)
+            self.subscription.destroy()
 
-    def create(self, node_id: str, topic_name: str, message_type: str) -> (str, Subscription):
-        node = self.node_handler.get_by_id(node_id)
+    async def handle_message(self, message: Message) -> None:
+        if message.type == MessageType.DESTROY_SUBSCRIPTION:
+            try:
+                return self.handle_destroy_subscription(message)
 
-        sub_id = str(self.counter)
-        self.counter += 1
+            except Exception as e:
+                self.logger.error('Failed to destroy Subscription %s! %s'
+                                  % (self.id, str(e)))
+                self.send_error_respond(message, e)
 
-        subscription = node.create_subscription(
-            get_message(message_type),
-            topic_name,
-            lambda message: self.sub_callback_handler.callback(sub_id, message),
-            10)
+        await super().handle_message(message)
 
-        self.subscriptions[sub_id] = subscription
+    def handle_destroy_subscription(self, message: Message) -> None:
+        if message.content.get('subscription_id') == self.id:
+            self.destroy()
+            self.send_respond(message, {'subscription_id': self.id})
 
-        return sub_id, subscription
+    def callback(self, message: MsgType) -> None:
+        try:
+            fields = message.get_fields_and_field_types()
 
-    def destroy(self, subscription_id: str) -> str:
-        subscription = self.get_by_id(subscription_id)
+            message_dict = {}
+            for field in fields:
+                if hasattr(message, field):
+                    message_dict[field] = getattr(message, field)
 
-        subscription.destroy()
+            self.logger.debug('Subscription %s message sent! %s'
+                              % (self.id, str(message_dict)))
+            self.send_request(MessageType.SUBSCRIPTION_MESSAGE, {
+                'subscription_id': self.id,
+                'message': json.dumps(message_dict)})
 
-        return subscription_id
+        except Exception as e:
+            self.logger.error('Failed to handle Subscription %s callback! %s'
+                              % (self.id, str(e)))
