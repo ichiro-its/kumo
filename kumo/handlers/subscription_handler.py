@@ -18,7 +18,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-import json
 from rclpy.logging import get_logger
 from rclpy.node import Node, MsgType
 
@@ -71,7 +70,7 @@ class SubscriptionHandler(BaseHandler):
                               % (self.id, str(message_dict)))
             self.send_request(MessageType.SUBSCRIPTION_MESSAGE, {
                 'subscription_id': self.id,
-                'message': json.dumps(message_dict)})
+                'message': message_dict})
 
         except Exception as e:
             self.logger.error('Failed to handle Subscription %s callback! %s'
