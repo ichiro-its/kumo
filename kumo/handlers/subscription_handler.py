@@ -71,7 +71,7 @@ class SubscriptionHandler(BaseHandler):
                               % (self.id, str(message_dict)))
             self.send_request(MessageType.SUBSCRIPTION_MESSAGE, {
                 'subscription_id': self.id,
-                'message': json.dumps(message_dict)})
+                'message': message_dict})
 
         except Exception as e:
             self.logger.error('Failed to handle Subscription %s callback! %s'

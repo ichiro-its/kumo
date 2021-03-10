@@ -53,7 +53,10 @@ class Session:
 
                 while len(self.context.messages) > 0:
                     message: Message = self.context.messages.pop()
-                    await self.websocket.send(message.toString())
+                    message_string: str = message.toString()
+
+                    self.logger.debug('Sending: %s' % message_string)
+                    await self.websocket.send(message_string)
 
                 while True:
                     try:
@@ -76,6 +79,7 @@ class Session:
 
     async def handle_message(self) -> None:
         message_string = await asyncio.wait_for(self.websocket.recv(), 0.01)
+        self.logger.debug('Received: %s' % message_string)
 
         try:
             message = parse_message(message_string)
