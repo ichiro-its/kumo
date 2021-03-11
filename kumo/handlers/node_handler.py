@@ -51,7 +51,16 @@ class NodeHandler(BaseHandler):
         await super().process()
 
     async def handle_message(self, message: Message) -> None:
-        if message.type == MessageType.CREATE_SUBSCRIPTION:
+
+        if message.type == MessageType.DESTROY_NODE:
+            try:
+                return self.handle_destroy_node(message)
+
+            except Exception as e:
+                self.logger.error('Failed to destroy Node %s! %s' % (self.id, str(e)))
+                self.send_error_respond(message, e)
+
+        elif message.type == MessageType.CREATE_SUBSCRIPTION:
             try:
                 return self.handle_create_subscription(message)
 
@@ -60,6 +69,11 @@ class NodeHandler(BaseHandler):
                 self.send_error_respond(message, e)
 
         await super().handle_message(message)
+
+    def handle_destroy_node(self, message: Message) -> None:
+        if message.content.get('node_id') == self.id:
+            self.destroy()
+            self.send_respond(message, {'node_id': self.id})
 
     def handle_create_subscription(self, message: Message) -> None:
         if message.content.get('node_id') == self.id:
