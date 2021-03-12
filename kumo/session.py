@@ -55,7 +55,7 @@ class Session:
                     message: Message = self.context.messages.pop()
                     message_string: str = message.toString()
 
-                    self.logger.debug('Sending: %s' % message_string)
+                    self.logger.debug('Sending message: %s' % message_string)
                     await self.websocket.send(message_string)
 
                 while True:
@@ -74,12 +74,12 @@ class Session:
                 raise e
 
             except Exception as e:
-                self.logger.error('Something happened on Session %s! %s'
+                self.logger.error('Something happened on session %s! %s'
                                   % (self.id, str(e)))
 
     async def handle_message(self) -> None:
         message_string = await asyncio.wait_for(self.websocket.recv(), 0.01)
-        self.logger.debug('Received: %s' % message_string)
+        self.logger.debug('Received message: %s' % message_string)
 
         try:
             message = parse_message(message_string)
