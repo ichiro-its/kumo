@@ -57,7 +57,7 @@ class Bridge:
 
 
 def main():
-    Bridge(8080, 'localhost').run()
+    Bridge(8080, None).run()
 
 
 if __name__ == '__main__':
