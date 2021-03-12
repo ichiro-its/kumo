@@ -38,7 +38,7 @@ class ContextHandler(BaseHandler):
                 return self.handle_create_node(message)
 
             except Exception as e:
-                self.logger.error('Failed to create a Node! %s' % str(e))
+                self.logger.error('Failed to create a node! %s' % str(e))
                 self.send_error_respond(message, e)
 
         await super().handle_message(message)

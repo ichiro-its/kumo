@@ -25,55 +25,59 @@ from kumo.handlers.base_handler import BaseHandler
 from kumo.message import Message, MessageType
 
 
-class SubscriptionHandler(BaseHandler):
+class PublisherHandler(BaseHandler):
 
     def __init__(self, node: Node, message_type: MsgType, topic_name: str):
         super().__init__()
 
-        self.subscription = node.create_subscription(
-            message_type, topic_name, self.callback, 10)
+        self.publisher = node.create_publisher(message_type, topic_name, 10)
 
-        self.logger = get_logger('subscription_handler')
+        self.logger = get_logger('publisher_handler')
 
     def destroy(self) -> bool:
         if super().destroy():
-            self.logger.warn('Destroying subscription %s...' % self.id)
-            self.subscription.destroy()
+            self.logger.warn('Destroying publisher %s...' % self.id)
+            self.publisher.destroy()
 
     async def handle_message(self, message: Message) -> None:
-        if message.type == MessageType.DESTROY_SUBSCRIPTION:
+        if message.type == MessageType.DESTROY_PUBLISHER:
             try:
-                return self.handle_destroy_subscription(message)
+                return self.handle_destroy_publisher(message)
 
             except Exception as e:
-                self.logger.error('Failed to destroy subscription %s! %s'
+                self.logger.error('Failed to destroy publisher %s! %s'
+                                  % (self.id, str(e)))
+
+                self.send_error_respond(message, e)
+
+        elif message.type == MessageType.PUBLISHER_MESSAGE:
+            try:
+                return self.handle_publisher_message(message)
+
+            except Exception as e:
+                self.logger.error('Failed to publish publisher %s message! %s'
                                   % (self.id, str(e)))
 
                 self.send_error_respond(message, e)
 
         await super().handle_message(message)
 
-    def handle_destroy_subscription(self, message: Message) -> None:
-        if message.content.get('subscription_id') == self.id:
+    def handle_destroy_publisher(self, message: Message) -> None:
+        if message.content.get('publisher_id') == self.id:
             self.destroy()
-            self.send_respond(message, {'subscription_id': self.id})
+            self.send_respond(message, {'publisher_id': self.id})
 
-    def callback(self, msg: MsgType) -> None:
-        try:
-            fields = msg.get_fields_and_field_types()
+    def handle_publisher_message(self, message: Message) -> None:
+        if message.content.get('publisher_id') == self.id:
+            fields = self.publisher.msg_type.get_fields_and_field_types()
+            msg_dict: dict = message.content.get('message')
 
-            msg_dict = {}
+            msg = self.publisher.msg_type()
             for field in fields:
                 if hasattr(msg, field):
-                    msg_dict[field] = getattr(msg, field)
+                    setattr(msg, field, msg_dict.get(field))
 
-            self.logger.debug('Sending subscription %s message: %s'
-                              % (self.id, str(msg_dict)))
+            self.logger.debug('Publishing publisher %s message: %s' % (self.id, str(msg)))
+            self.publisher.publish(msg)
 
-            self.send_request(MessageType.SUBSCRIPTION_MESSAGE, {
-                'subscription_id': self.id,
-                'message': msg_dict})
-
-        except Exception as e:
-            self.logger.error('Failed to handle subscription %s callback! %s'
-                              % (self.id, str(e)))
+            self.send_respond(message, {'publisher_id': self.id})

@@ -23,6 +23,7 @@ from rclpy.logging import get_logger
 from rosidl_runtime_py.utilities import get_message
 
 from kumo.handlers.base_handler import BaseHandler
+from kumo.handlers.publisher_handler import PublisherHandler
 from kumo.handlers.subscription_handler import SubscriptionHandler
 from kumo.message import Message, MessageType
 
@@ -36,9 +37,9 @@ class NodeHandler(BaseHandler):
 
         self.logger = get_logger('node_handler')
 
-    def destroy(self) -> None:
+    def destroy(self) -> bool:
         if super().destroy():
-            self.logger.warn('Destroying Node %s...' % self.id)
+            self.logger.warn('Destroying node %s...' % self.id)
             self.node.destroy_node()
 
     async def process(self) -> None:
@@ -46,7 +47,7 @@ class NodeHandler(BaseHandler):
             rclpy.spin_once(self.node, timeout_sec=0.01)
 
         except Exception as e:
-            self.logger.error('Failed to spin Node %s! %s' % (id, e))
+            self.logger.error('Failed to spin node %s! %s' % (id, e))
 
         await super().process()
 
@@ -57,7 +58,15 @@ class NodeHandler(BaseHandler):
                 return self.handle_destroy_node(message)
 
             except Exception as e:
-                self.logger.error('Failed to destroy Node %s! %s' % (self.id, str(e)))
+                self.logger.error('Failed to destroy node %s! %s' % (self.id, str(e)))
+                self.send_error_respond(message, e)
+
+        elif message.type == MessageType.CREATE_PUBLISHER:
+            try:
+                return self.handle_create_publisher(message)
+
+            except Exception as e:
+                self.logger.error('Failed to create a publisher! %s' % str(e))
                 self.send_error_respond(message, e)
 
         elif message.type == MessageType.CREATE_SUBSCRIPTION:
@@ -65,7 +74,7 @@ class NodeHandler(BaseHandler):
                 return self.handle_create_subscription(message)
 
             except Exception as e:
-                self.logger.error('Failed to create a Subscription! %s' % str(e))
+                self.logger.error('Failed to create a subscription! %s' % str(e))
                 self.send_error_respond(message, e)
 
         await super().handle_message(message)
@@ -75,13 +84,24 @@ class NodeHandler(BaseHandler):
             self.destroy()
             self.send_respond(message, {'node_id': self.id})
 
-    def handle_create_subscription(self, message: Message) -> None:
+    def handle_create_publisher(self, message: Message) -> None:
         if message.content.get('node_id') == self.id:
-            handler = SubscriptionHandler(
+            publisher = PublisherHandler(
                 self.node, get_message(message.content.get('message_type')),
                 message.content.get('topic_name'))
 
-            self.attach(handler)
+            self.attach(publisher)
 
-            self.logger.info('Subscription %s created!' % handler.id)
-            self.send_respond(message, {'subscription_id': handler.id})
+            self.logger.info('Publisher %s created!' % publisher.id)
+            self.send_respond(message, {'publisher_id': publisher.id})
+
+    def handle_create_subscription(self, message: Message) -> None:
+        if message.content.get('node_id') == self.id:
+            subscription = SubscriptionHandler(
+                self.node, get_message(message.content.get('message_type')),
+                message.content.get('topic_name'))
+
+            self.attach(subscription)
+
+            self.logger.info('Subscription %s created!' % subscription.id)
+            self.send_respond(message, {'subscription_id': subscription.id})
