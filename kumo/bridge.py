@@ -53,6 +53,9 @@ class Bridge:
         except KeyboardInterrupt as e:
             self.logger.error('Keyboard interrupt! %s' % str(e))
 
+        except Exception as e:
+            self.logger.error('Failed to start bridge! %s' % str(e))
+
         rclpy.shutdown()
 
 

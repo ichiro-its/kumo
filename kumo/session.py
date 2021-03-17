@@ -37,7 +37,7 @@ class Session:
         Session.id_counter += 1
 
         self.websocket = websocket
-        self.logger = get_logger('session')
+        self.logger = get_logger('session_%s' % self.id)
 
         self.context = ContextHandler()
 
@@ -45,7 +45,7 @@ class Session:
         self.context.destroy()
 
     async def listen(self) -> None:
-        self.logger.info('Session %s started!' % self.id)
+        self.logger.info('Session started!')
 
         while True:
             try:
@@ -66,7 +66,7 @@ class Session:
                         break
 
             except websockets.ConnectionClosed as e:
-                self.logger.warn('Session %s closed! %s' % (self.id, str(e)))
+                self.logger.warn('Session closed! %s' % str(e))
                 return self.cleanup()
 
             except KeyboardInterrupt as e:
@@ -74,8 +74,7 @@ class Session:
                 raise e
 
             except Exception as e:
-                self.logger.error('Something happened on session %s! %s'
-                                  % (self.id, str(e)))
+                self.logger.error('Something happened! %s' % str(e))
 
     async def handle_message(self) -> None:
         message_string = await asyncio.wait_for(self.websocket.recv(), 0.01)
