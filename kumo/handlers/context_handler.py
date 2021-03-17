@@ -30,7 +30,7 @@ class ContextHandler(BaseHandler):
     def __init__(self):
         super().__init__()
 
-        self.logger = get_logger('context_handler')
+        self.logger = get_logger('context_%s' % self.id)
 
     async def handle_message(self, message: Message) -> None:
         if message.type == MessageType.CREATE_NODE:
@@ -38,7 +38,7 @@ class ContextHandler(BaseHandler):
                 return self.handle_create_node(message)
 
             except Exception as e:
-                self.logger.error('Failed to create a node! %s' % str(e))
+                self.logger.error('Failed to create a Node! %s' % str(e))
                 self.send_error_respond(message, e)
 
         await super().handle_message(message)

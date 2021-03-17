@@ -33,11 +33,11 @@ class SubscriptionHandler(BaseHandler):
         self.subscription = node.create_subscription(
             message_type, topic_name, self.callback, 10)
 
-        self.logger = get_logger('subscription_handler')
+        self.logger = get_logger('subscription_%s' % self.id)
 
     def destroy(self) -> bool:
         if super().destroy():
-            self.logger.warn('Destroying subscription %s...' % self.id)
+            self.logger.warn('Destroying Subscription...')
             self.subscription.destroy()
 
     async def handle_message(self, message: Message) -> None:
@@ -46,9 +46,7 @@ class SubscriptionHandler(BaseHandler):
                 return self.handle_destroy_subscription(message)
 
             except Exception as e:
-                self.logger.error('Failed to destroy subscription %s! %s'
-                                  % (self.id, str(e)))
-
+                self.logger.error('Failed to destroy Subscription! %s' % str(e))
                 self.send_error_respond(message, e)
 
         await super().handle_message(message)
@@ -67,13 +65,11 @@ class SubscriptionHandler(BaseHandler):
                 if hasattr(msg, field):
                     msg_dict[field] = getattr(msg, field)
 
-            self.logger.debug('Sending subscription %s message: %s'
-                              % (self.id, str(msg_dict)))
+            self.logger.debug('Sending Subscription message: %s' % str(msg_dict))
 
             self.send_request(MessageType.SUBSCRIPTION_MESSAGE, {
                 'subscription_id': self.id,
                 'message': msg_dict})
 
         except Exception as e:
-            self.logger.error('Failed to handle subscription %s callback! %s'
-                              % (self.id, str(e)))
+            self.logger.error('Failed to handle Subscription callback! %s' % str(e))

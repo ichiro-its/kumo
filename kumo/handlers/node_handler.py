@@ -36,11 +36,11 @@ class NodeHandler(BaseHandler):
 
         self.node = rclpy.create_node(name)
 
-        self.logger = get_logger('node_handler')
+        self.logger = get_logger('node_%s' % self.id)
 
     def destroy(self) -> bool:
         if super().destroy():
-            self.logger.warn('Destroying node %s...' % self.id)
+            self.logger.warn('Destroying Node...')
             self.node.destroy_node()
 
     async def process(self) -> None:
@@ -48,7 +48,7 @@ class NodeHandler(BaseHandler):
             rclpy.spin_once(self.node, timeout_sec=0.01)
 
         except Exception as e:
-            self.logger.error('Failed to spin node %s! %s' % (id, e))
+            self.logger.error('Failed to spin Node! %s' % str(e))
 
         await super().process()
 
@@ -59,7 +59,7 @@ class NodeHandler(BaseHandler):
                 return self.handle_destroy_node(message)
 
             except Exception as e:
-                self.logger.error('Failed to destroy node %s! %s' % (self.id, str(e)))
+                self.logger.error('Failed to destroy Node! %s' % str(e))
                 self.send_error_respond(message, e)
 
         elif message.type == MessageType.CREATE_PUBLISHER:
@@ -67,7 +67,7 @@ class NodeHandler(BaseHandler):
                 return self.handle_create_publisher(message)
 
             except Exception as e:
-                self.logger.error('Failed to create a publisher! %s' % str(e))
+                self.logger.error('Failed to create a Publisher! %s' % str(e))
                 self.send_error_respond(message, e)
 
         elif message.type == MessageType.CREATE_SUBSCRIPTION:
@@ -75,7 +75,7 @@ class NodeHandler(BaseHandler):
                 return self.handle_create_subscription(message)
 
             except Exception as e:
-                self.logger.error('Failed to create a subscription! %s' % str(e))
+                self.logger.error('Failed to create a Subscription! %s' % str(e))
                 self.send_error_respond(message, e)
 
         elif message.type == MessageType.CREATE_CLIENT:
@@ -83,7 +83,7 @@ class NodeHandler(BaseHandler):
                 return self.handle_create_client(message)
 
             except Exception as e:
-                self.logger.error('Failed to create a client! %s' % str(e))
+                self.logger.error('Failed to create a Client! %s' % str(e))
                 self.send_error_respond(message, e)
 
         await super().handle_message(message)
@@ -104,17 +104,6 @@ class NodeHandler(BaseHandler):
             self.logger.info('Publisher %s created!' % publisher.id)
             self.send_respond(message, {'publisher_id': publisher.id})
 
-    def handle_create_client(self, message: Message) -> None:
-        if message.content.get('node_id') == self.id:
-            client = ClientHandler(
-                self.node, get_service(message.content.get('service_type')),
-                message.content.get('service_name'))
-
-            self.attach(client)
-
-            self.logger.info('Client %s created!' % client.id)
-            self.send_respond(message, {'client_id': client.id})
-
     def handle_create_subscription(self, message: Message) -> None:
         if message.content.get('node_id') == self.id:
             subscription = SubscriptionHandler(
@@ -125,3 +114,14 @@ class NodeHandler(BaseHandler):
 
             self.logger.info('Subscription %s created!' % subscription.id)
             self.send_respond(message, {'subscription_id': subscription.id})
+
+    def handle_create_client(self, message: Message) -> None:
+        if message.content.get('node_id') == self.id:
+            client = ClientHandler(
+                self.node, get_service(message.content.get('service_type')),
+                message.content.get('service_name'))
+
+            self.attach(client)
+
+            self.logger.info('Client %s created!' % client.id)
+            self.send_respond(message, {'client_id': client.id})

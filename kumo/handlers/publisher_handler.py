@@ -32,11 +32,11 @@ class PublisherHandler(BaseHandler):
 
         self.publisher = node.create_publisher(message_type, topic_name, 10)
 
-        self.logger = get_logger('publisher_handler')
+        self.logger = get_logger('publisher_%s' % self.id)
 
     def destroy(self) -> bool:
         if super().destroy():
-            self.logger.warn('Destroying publisher %s...' % self.id)
+            self.logger.warn('Destroying publisher...')
             self.publisher.destroy()
 
     async def handle_message(self, message: Message) -> None:
@@ -45,9 +45,7 @@ class PublisherHandler(BaseHandler):
                 return self.handle_destroy_publisher(message)
 
             except Exception as e:
-                self.logger.error('Failed to destroy publisher %s! %s'
-                                  % (self.id, str(e)))
-
+                self.logger.error('Failed to destroy Publisher! %s' % str(e))
                 self.send_error_respond(message, e)
 
         elif message.type == MessageType.PUBLISHER_MESSAGE:
@@ -55,9 +53,7 @@ class PublisherHandler(BaseHandler):
                 return self.handle_publisher_message(message)
 
             except Exception as e:
-                self.logger.error('Failed to publish publisher %s message! %s'
-                                  % (self.id, str(e)))
-
+                self.logger.error('Failed to publish Publisher message! %s' % str(e))
                 self.send_error_respond(message, e)
 
         await super().handle_message(message)
@@ -77,7 +73,7 @@ class PublisherHandler(BaseHandler):
                 if hasattr(msg, field):
                     setattr(msg, field, msg_dict.get(field))
 
-            self.logger.debug('Publishing publisher %s message: %s' % (self.id, str(msg)))
+            self.logger.debug('Publishing Publisher message: %s' % str(msg))
             self.publisher.publish(msg)
 
             self.send_respond(message, {'publisher_id': self.id})

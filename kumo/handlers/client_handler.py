@@ -35,11 +35,11 @@ class ClientHandler(BaseHandler):
         self.client = node.create_client(service_type, service_name)
         self.message_futures: List[(Message, Future)] = []
 
-        self.logger = get_logger('client_handler')
+        self.logger = get_logger('client_%s' % self.id)
 
     def destroy(self) -> bool:
         if super().destroy():
-            self.logger.warn('Destroying client %s...' % self.id)
+            self.logger.warn('Destroying Client...')
             self.client.destroy()
 
     async def process(self) -> None:
@@ -57,8 +57,7 @@ class ClientHandler(BaseHandler):
                     if hasattr(res, field):
                         res_dict[field] = getattr(res, field)
 
-                self.logger.debug('Responding client %s service: %s'
-                                  % (self.id, str(res_dict)))
+                self.logger.debug('Responding Client service: %s' % str(res_dict))
 
                 self.send_respond(message, {
                     'client_id': self.id,
@@ -77,9 +76,7 @@ class ClientHandler(BaseHandler):
                 return self.handle_destroy_client(message)
 
             except Exception as e:
-                self.logger.error('Failed to destroy client %s! %s'
-                                  % (self.id, str(e)))
-
+                self.logger.error('Failed to destroy Client! %s' % str(e))
                 self.send_error_respond(message, e)
 
         elif message.type == MessageType.CLIENT_REQUEST:
@@ -87,9 +84,7 @@ class ClientHandler(BaseHandler):
                 return self.handle_client_request(message)
 
             except Exception as e:
-                self.logger.error('Failed to request client %s service! %s'
-                                  % (self.id, str(e)))
-
+                self.logger.error('Failed to request Client service! %s' % str(e))
                 self.send_error_respond(message, e)
 
         await super().handle_message(message)
@@ -109,7 +104,7 @@ class ClientHandler(BaseHandler):
                 if hasattr(req, field):
                     setattr(req, field, req_dict.get(field))
 
-            self.logger.debug('Requesting client %s service: %s' % (self.id, str(req)))
+            self.logger.debug('Requesting client service: %s' % str(req))
             future = self.client.call_async(req)
 
             self.message_futures.append((message, future))
