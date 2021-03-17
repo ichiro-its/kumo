@@ -20,9 +20,10 @@
 
 import rclpy
 from rclpy.logging import get_logger
-from rosidl_runtime_py.utilities import get_message
+from rosidl_runtime_py.utilities import get_message, get_service
 
 from kumo.handlers.base_handler import BaseHandler
+from kumo.handlers.client_handler import ClientHandler
 from kumo.handlers.publisher_handler import PublisherHandler
 from kumo.handlers.subscription_handler import SubscriptionHandler
 from kumo.message import Message, MessageType
@@ -77,6 +78,14 @@ class NodeHandler(BaseHandler):
                 self.logger.error('Failed to create a subscription! %s' % str(e))
                 self.send_error_respond(message, e)
 
+        elif message.type == MessageType.CREATE_CLIENT:
+            try:
+                return self.handle_create_client(message)
+
+            except Exception as e:
+                self.logger.error('Failed to create a client! %s' % str(e))
+                self.send_error_respond(message, e)
+
         await super().handle_message(message)
 
     def handle_destroy_node(self, message: Message) -> None:
@@ -94,6 +103,17 @@ class NodeHandler(BaseHandler):
 
             self.logger.info('Publisher %s created!' % publisher.id)
             self.send_respond(message, {'publisher_id': publisher.id})
+
+    def handle_create_client(self, message: Message) -> None:
+        if message.content.get('node_id') == self.id:
+            client = ClientHandler(
+                self.node, get_service(message.content.get('service_type')),
+                message.content.get('service_name'))
+
+            self.attach(client)
+
+            self.logger.info('Client %s created!' % client.id)
+            self.send_respond(message, {'client_id': client.id})
 
     def handle_create_subscription(self, message: Message) -> None:
         if message.content.get('node_id') == self.id:
