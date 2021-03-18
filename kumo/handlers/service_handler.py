@@ -22,6 +22,7 @@ from rclpy.logging import get_logger
 from rclpy.node import Node, MsgType, SrvType
 
 from kumo.handlers.base_handler import BaseHandler
+from kumo.message import Message, MessageType
 
 
 class ServiceHandler(BaseHandler):
@@ -38,6 +39,22 @@ class ServiceHandler(BaseHandler):
         if super().destroy():
             self.logger.warn('Destroying Service...')
             self.service.destroy()
+
+    async def handle_message(self, message: Message) -> None:
+        if message.type == MessageType.DESTROY_SERVICE:
+            try:
+                return self.handle_destroy_service(message)
+
+            except Exception as e:
+                self.logger.error('Failed to destroy Service! %s' % str(e))
+                self.send_error_respond(message, e)
+
+        await super().handle_message(message)
+
+    def handle_destroy_service(self, message: Message) -> None:
+        if message.content.get('service_id') == self.id:
+            self.destroy()
+            self.send_respond(message, {'service_id': self.id})
 
     def callback(self, request: MsgType, response: SrvType) -> None:
         pass
