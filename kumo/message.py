@@ -20,6 +20,7 @@
 
 from enum import Enum
 import json
+from rclpy.node import MsgType
 
 
 class MessageType(Enum):
@@ -62,3 +63,22 @@ def parse_message(message: str) -> Message:
     return Message(MessageType(message_json.get('type')),
                    message_json.get('content', {}),
                    message_json.get('id', None))
+
+def msg_to_dict(msg: MsgType) -> dict:
+    fields = msg.get_fields_and_field_types()
+
+    msg_dict = {}
+    for field in fields:
+        if hasattr(msg, field):
+            msg_dict[field] = getattr(msg, field)
+
+    return msg_dict
+
+def dict_to_msg(msg_dict: dict, msg: MsgType) -> MsgType:
+    fields = msg.get_fields_and_field_types()
+
+    for field in fields:
+        if hasattr(msg, field):
+            setattr(msg, field, msg_dict.get(field))
+
+    return msg

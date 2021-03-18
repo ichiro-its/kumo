@@ -24,7 +24,7 @@ from rclpy.node import Node, MsgType, SrvType
 from typing import List
 
 from kumo.handlers.base_handler import BaseHandler, Connection
-from kumo.message import Message, MessageType
+from kumo.message import dict_to_msg, Message, MessageType, msg_to_dict
 
 
 class ClientHandler(BaseHandler):
@@ -53,13 +53,7 @@ class ClientHandler(BaseHandler):
             future: Future = future
 
             if future.done():
-                res: MsgType = future.result()
-                fields = res.get_fields_and_field_types()
-
-                res_dict = {}
-                for field in fields:
-                    if hasattr(res, field):
-                        res_dict[field] = getattr(res, field)
+                res_dict = msg_to_dict(future.result())
 
                 self.logger.debug('Responding Client service: %s' % str(res_dict))
 
@@ -98,13 +92,8 @@ class ClientHandler(BaseHandler):
 
     async def handle_client_request(self, message: Message) -> None:
         if message.content.get('client_id') == self.id:
-            fields = self.client.srv_type.Request.get_fields_and_field_types()
             req_dict: dict = message.content.get('request')
-
-            req = self.client.srv_type.Request()
-            for field in fields:
-                if hasattr(req, field):
-                    setattr(req, field, req_dict.get(field))
+            req = dict_to_msg(req_dict, self.client.srv_type.Request())
 
             self.logger.debug('Requesting client service: %s' % str(req))
             future = self.client.call_async(req)

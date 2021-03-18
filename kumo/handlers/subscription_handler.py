@@ -22,7 +22,7 @@ from rclpy.logging import get_logger
 from rclpy.node import Node, MsgType
 
 from kumo.handlers.base_handler import BaseHandler, Connection
-from kumo.message import Message, MessageType
+from kumo.message import Message, MessageType, msg_to_dict
 
 
 class SubscriptionHandler(BaseHandler):
@@ -58,12 +58,7 @@ class SubscriptionHandler(BaseHandler):
 
     async def callback(self, msg: MsgType) -> None:
         try:
-            fields = msg.get_fields_and_field_types()
-
-            msg_dict = {}
-            for field in fields:
-                if hasattr(msg, field):
-                    msg_dict[field] = getattr(msg, field)
+            msg_dict = msg_to_dict(msg)
 
             self.logger.debug('Sending Subscription message: %s' % str(msg_dict))
 

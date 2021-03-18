@@ -22,7 +22,7 @@ from rclpy.logging import get_logger
 from rclpy.node import Node, MsgType
 
 from kumo.handlers.base_handler import BaseHandler, Connection
-from kumo.message import Message, MessageType
+from kumo.message import dict_to_msg, Message, MessageType
 
 
 class PublisherHandler(BaseHandler):
@@ -65,13 +65,8 @@ class PublisherHandler(BaseHandler):
 
     async def handle_publisher_message(self, message: Message) -> None:
         if message.content.get('publisher_id') == self.id:
-            fields = self.publisher.msg_type.get_fields_and_field_types()
             msg_dict: dict = message.content.get('message')
-
-            msg = self.publisher.msg_type()
-            for field in fields:
-                if hasattr(msg, field):
-                    setattr(msg, field, msg_dict.get(field))
+            msg = dict_to_msg(msg_dict, self.publisher.msg_type())
 
             self.logger.debug('Publishing Publisher message: %s' % str(msg))
             self.publisher.publish(msg)
