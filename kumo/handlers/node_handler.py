@@ -22,7 +22,7 @@ import rclpy
 from rclpy.logging import get_logger
 from rosidl_runtime_py.utilities import get_message, get_service
 
-from kumo.handlers.base_handler import BaseHandler
+from kumo.handlers.base_handler import BaseHandler, Connection
 from kumo.handlers.client_handler import ClientHandler
 from kumo.handlers.publisher_handler import PublisherHandler
 from kumo.handlers.service_handler import ServiceHandler
@@ -32,8 +32,8 @@ from kumo.message import Message, MessageType
 
 class NodeHandler(BaseHandler):
 
-    def __init__(self, name: str):
-        super().__init__()
+    def __init__(self, connection: Connection, name: str):
+        super().__init__(connection)
 
         self.node = rclpy.create_node(name)
 
@@ -45,103 +45,107 @@ class NodeHandler(BaseHandler):
             self.node.destroy_node()
 
     async def process(self) -> None:
+        await super().process()
+
         try:
-            rclpy.spin_once(self.node, timeout_sec=0.01)
+            rclpy.spin_once(self.node, timeout_sec=0)
 
         except Exception as e:
             self.logger.error('Failed to spin Node! %s' % str(e))
-
-        await super().process()
 
     async def handle_message(self, message: Message) -> None:
 
         if message.type == MessageType.DESTROY_NODE:
             try:
-                return self.handle_destroy_node(message)
+                return await self.handle_destroy_node(message)
 
             except Exception as e:
                 self.logger.error('Failed to destroy Node! %s' % str(e))
-                self.send_error_response(message, e)
+                await self.send_error_response(message, e)
 
         elif message.type == MessageType.CREATE_PUBLISHER:
             try:
-                return self.handle_create_publisher(message)
+                return await self.handle_create_publisher(message)
 
             except Exception as e:
                 self.logger.error('Failed to create a Publisher! %s' % str(e))
-                self.send_error_response(message, e)
+                await self.send_error_response(message, e)
 
         elif message.type == MessageType.CREATE_SUBSCRIPTION:
             try:
-                return self.handle_create_subscription(message)
+                return await self.handle_create_subscription(message)
 
             except Exception as e:
                 self.logger.error('Failed to create a Subscription! %s' % str(e))
-                self.send_error_response(message, e)
+                await self.send_error_response(message, e)
 
         elif message.type == MessageType.CREATE_CLIENT:
             try:
-                return self.handle_create_client(message)
+                return await self.handle_create_client(message)
 
             except Exception as e:
                 self.logger.error('Failed to create a Client! %s' % str(e))
-                self.send_error_response(message, e)
+                await self.send_error_response(message, e)
 
         elif message.type == MessageType.CREATE_SERVICE:
             try:
-                return self.handle_create_service(message)
+                return await self.handle_create_service(message)
 
             except Exception as e:
                 self.logger.error('Failed to create a Service! %s' % str(e))
-                self.send_error_response(message, e)
+                await self.send_error_response(message, e)
 
         await super().handle_message(message)
 
-    def handle_destroy_node(self, message: Message) -> None:
+    async def handle_destroy_node(self, message: Message) -> None:
         if message.content.get('node_id') == self.id:
             self.destroy()
-            self.send_response(message, {'node_id': self.id})
+            await self.send_response(message, {'node_id': self.id})
 
-    def handle_create_publisher(self, message: Message) -> None:
+    async def handle_create_publisher(self, message: Message) -> None:
         if message.content.get('node_id') == self.id:
             publisher = PublisherHandler(
-                self.node, get_message(message.content.get('message_type')),
+                self.connection, self.node,
+                get_message(message.content.get('message_type')),
                 message.content.get('topic_name'))
 
             self.attach(publisher)
 
             self.logger.info('Publisher %s created!' % publisher.id)
-            self.send_response(message, {'publisher_id': publisher.id})
+            await self.send_response(message, {'publisher_id': publisher.id})
 
-    def handle_create_subscription(self, message: Message) -> None:
+    async def handle_create_subscription(self, message: Message) -> None:
         if message.content.get('node_id') == self.id:
             subscription = SubscriptionHandler(
-                self.node, get_message(message.content.get('message_type')),
+                self.connection, self.node,
+                get_message(message.content.get('message_type')),
                 message.content.get('topic_name'))
 
             self.attach(subscription)
 
             self.logger.info('Subscription %s created!' % subscription.id)
-            self.send_response(message, {'subscription_id': subscription.id})
+            await self.send_response(message, {'subscription_id': subscription.id})
 
-    def handle_create_client(self, message: Message) -> None:
+    async def handle_create_client(self, message: Message) -> None:
         if message.content.get('node_id') == self.id:
             client = ClientHandler(
-                self.node, get_service(message.content.get('service_type')),
+                self.connection, self.node,
+                get_service(message.content.get('service_type')),
                 message.content.get('service_name'))
 
             self.attach(client)
 
             self.logger.info('Client %s created!' % client.id)
-            self.send_response(message, {'client_id': client.id})
+            await self.send_response(message, {'client_id': client.id})
 
-    def handle_create_service(self, message: Message) -> None:
+    async def handle_create_service(self, message: Message) -> None:
         if message.content.get('node_id') == self.id:
             service = ServiceHandler(
-                self.node, get_service(message.content.get('service_type')),
+                self.connection, self.node,
+                get_service(message.content.get('service_type')),
                 message.content.get('service_name'))
 
             self.attach(service)
 
             self.logger.info('Service %s created!' % service.id)
-            self.send_response(message, {'service_id': service.id})
+            await self.send_response(message, {'service_id': service.id})

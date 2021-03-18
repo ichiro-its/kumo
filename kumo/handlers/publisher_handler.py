@@ -21,14 +21,14 @@
 from rclpy.logging import get_logger
 from rclpy.node import Node, MsgType
 
-from kumo.handlers.base_handler import BaseHandler
+from kumo.handlers.base_handler import BaseHandler, Connection
 from kumo.message import Message, MessageType
 
 
 class PublisherHandler(BaseHandler):
 
-    def __init__(self, node: Node, message_type: MsgType, topic_name: str):
-        super().__init__()
+    def __init__(self, connection: Connection, node: Node, message_type: MsgType, topic_name: str):
+        super().__init__(connection)
 
         self.publisher = node.create_publisher(message_type, topic_name, 10)
 
@@ -42,28 +42,28 @@ class PublisherHandler(BaseHandler):
     async def handle_message(self, message: Message) -> None:
         if message.type == MessageType.DESTROY_PUBLISHER:
             try:
-                return self.handle_destroy_publisher(message)
+                return await self.handle_destroy_publisher(message)
 
             except Exception as e:
                 self.logger.error('Failed to destroy Publisher! %s' % str(e))
-                self.send_error_response(message, e)
+                await self.send_error_response(message, e)
 
         elif message.type == MessageType.PUBLISHER_MESSAGE:
             try:
-                return self.handle_publisher_message(message)
+                return await self.handle_publisher_message(message)
 
             except Exception as e:
                 self.logger.error('Failed to publish Publisher message! %s' % str(e))
-                self.send_error_response(message, e)
+                await self.send_error_response(message, e)
 
         await super().handle_message(message)
 
-    def handle_destroy_publisher(self, message: Message) -> None:
+    async def handle_destroy_publisher(self, message: Message) -> None:
         if message.content.get('publisher_id') == self.id:
             self.destroy()
-            self.send_response(message, {'publisher_id': self.id})
+            await self.send_response(message, {'publisher_id': self.id})
 
-    def handle_publisher_message(self, message: Message) -> None:
+    async def handle_publisher_message(self, message: Message) -> None:
         if message.content.get('publisher_id') == self.id:
             fields = self.publisher.msg_type.get_fields_and_field_types()
             msg_dict: dict = message.content.get('message')
@@ -76,4 +76,4 @@ class PublisherHandler(BaseHandler):
             self.logger.debug('Publishing Publisher message: %s' % str(msg))
             self.publisher.publish(msg)
 
-            self.send_response(message, {'publisher_id': self.id})
+            await self.send_response(message, {'publisher_id': self.id})

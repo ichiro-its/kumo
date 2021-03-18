@@ -23,14 +23,16 @@ from rclpy.logging import get_logger
 from rclpy.node import Node, MsgType, SrvType
 from typing import List
 
-from kumo.handlers.base_handler import BaseHandler
+from kumo.handlers.base_handler import BaseHandler, Connection
 from kumo.message import Message, MessageType
 
 
 class ClientHandler(BaseHandler):
 
-    def __init__(self, node: Node, service_type: SrvType, service_name: str):
-        super().__init__()
+    def __init__(self, connection: Connection, node: Node,
+                 service_type: SrvType, service_name: str):
+
+        super().__init__(connection)
 
         self.client = node.create_client(service_type, service_name)
         self.message_futures: List[(Message, Future)] = []
@@ -43,6 +45,8 @@ class ClientHandler(BaseHandler):
             self.client.destroy()
 
     async def process(self) -> None:
+        await super().process()
+
         new_message_futures: List[(Message, Future)] = []
         for (message, future) in self.message_futures:
             message: Message = message
@@ -59,7 +63,7 @@ class ClientHandler(BaseHandler):
 
                 self.logger.debug('Responding Client service: %s' % str(res_dict))
 
-                self.send_response(message, {
+                await self.send_response(message, {
                     'client_id': self.id,
                     'response': res_dict})
 
@@ -68,33 +72,31 @@ class ClientHandler(BaseHandler):
 
         self.message_futures = new_message_futures
 
-        await super().process()
-
     async def handle_message(self, message: Message) -> None:
         if message.type == MessageType.DESTROY_CLIENT:
             try:
-                return self.handle_destroy_client(message)
+                return await self.handle_destroy_client(message)
 
             except Exception as e:
                 self.logger.error('Failed to destroy Client! %s' % str(e))
-                self.send_error_response(message, e)
+                await self.send_error_response(message, e)
 
         elif message.type == MessageType.CLIENT_REQUEST:
             try:
-                return self.handle_client_request(message)
+                return await self.handle_client_request(message)
 
             except Exception as e:
                 self.logger.error('Failed to request Client service! %s' % str(e))
-                self.send_error_response(message, e)
+                await self.send_error_response(message, e)
 
         await super().handle_message(message)
 
-    def handle_destroy_client(self, message: Message) -> None:
+    async def handle_destroy_client(self, message: Message) -> None:
         if message.content.get('client_id') == self.id:
             self.destroy()
-            self.send_response(message, {'client_id': self.id})
+            await self.send_response(message, {'client_id': self.id})
 
-    def handle_client_request(self, message: Message) -> None:
+    async def handle_client_request(self, message: Message) -> None:
         if message.content.get('client_id') == self.id:
             fields = self.client.srv_type.Request.get_fields_and_field_types()
             req_dict: dict = message.content.get('request')

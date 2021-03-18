@@ -22,9 +22,7 @@ import asyncio
 import rclpy
 import websockets
 
-from kumo.session import Session
-
-WebSocket = websockets.WebSocketServerProtocol
+from kumo.session import Connection, Session
 
 
 class Bridge:
@@ -35,8 +33,8 @@ class Bridge:
 
         self.logger = rclpy.logging.get_logger('bridge')
 
-    async def listen(self, websocket: WebSocket, path: str) -> None:
-        await Session(websocket).listen()
+    async def listen(self, connection: Connection, path: str) -> None:
+        await Session(connection).listen()
 
     def run(self) -> None:
         rclpy.init()

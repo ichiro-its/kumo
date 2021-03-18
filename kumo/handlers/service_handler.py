@@ -21,14 +21,16 @@
 from rclpy.logging import get_logger
 from rclpy.node import Node, MsgType, SrvType
 
-from kumo.handlers.base_handler import BaseHandler
+from kumo.handlers.base_handler import BaseHandler, Connection
 from kumo.message import Message, MessageType
 
 
 class ServiceHandler(BaseHandler):
 
-    def __init__(self, node: Node, service_type: SrvType, service_name: str):
-        super().__init__()
+    def __init__(self, connection: Connection, node: Node,
+                 service_type: SrvType, service_name: str):
+
+        super().__init__(connection)
 
         self.service = node.create_service(
             service_type, service_name, self.callback)
@@ -43,18 +45,18 @@ class ServiceHandler(BaseHandler):
     async def handle_message(self, message: Message) -> None:
         if message.type == MessageType.DESTROY_SERVICE:
             try:
-                return self.handle_destroy_service(message)
+                return await self.handle_destroy_service(message)
 
             except Exception as e:
                 self.logger.error('Failed to destroy Service! %s' % str(e))
-                self.send_error_response(message, e)
+                await self.send_error_response(message, e)
 
         await super().handle_message(message)
 
-    def handle_destroy_service(self, message: Message) -> None:
+    async def handle_destroy_service(self, message: Message) -> None:
         if message.content.get('service_id') == self.id:
             self.destroy()
-            self.send_response(message, {'service_id': self.id})
+            await self.send_response(message, {'service_id': self.id})
 
-    def callback(self, request: MsgType, response: SrvType) -> None:
+    async def callback(self, request: MsgType, response: SrvType) -> None:
         pass

@@ -18,16 +18,22 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
+import asyncio
 from typing import Dict, List
+import websockets
 
-from kumo.message import Message, MessageType
+from kumo.message import Message, MessageType, parse_message
+
+Connection = websockets.WebSocketServerProtocol
 
 
 class BaseHandler:
 
     id_counter: int = 0
 
-    def __init__(self):
+    def __init__(self, connection: Connection):
+        self.connection = connection
+
         self.id = str(BaseHandler.id_counter)
         BaseHandler.id_counter += 1
 
@@ -67,17 +73,21 @@ class BaseHandler:
 
             child.parent = None
 
-    def send(self, message: Message) -> None:
-        self.messages.append(message)
+    async def send(self, message: Message) -> None:
+        await self.connection.send(message.toString())
 
-    def send_response(self, request: Message, content: dict) -> None:
-        self.send(Message(request.type, content, request.id))
+    async def send_response(self, request: Message, content: dict) -> None:
+        await self.send(Message(request.type, content, request.id))
 
-    def send_request(self, type: MessageType, content: dict) -> None:
-        self.send(Message(type, content))
+    async def send_request(self, type: MessageType, content: dict) -> None:
+        await self.send(Message(type, content))
 
-    def send_error_response(self, request: Message, error: Exception) -> None:
-        self.send(Message(request.type, {'error': str(error)}, request.id))
+    async def send_error_response(self, request: Message, error: Exception) -> None:
+        await self.send(Message(request.type, {'error': str(error)}, request.id))
+
+    async def recover(self) -> Message:
+        message_string = await asyncio.wait_for(self.connection.recv(), 0.01)
+        return parse_message(message_string)
 
     async def process(self) -> None:
         inactives = []

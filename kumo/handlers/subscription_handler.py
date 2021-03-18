@@ -21,14 +21,14 @@
 from rclpy.logging import get_logger
 from rclpy.node import Node, MsgType
 
-from kumo.handlers.base_handler import BaseHandler
+from kumo.handlers.base_handler import BaseHandler, Connection
 from kumo.message import Message, MessageType
 
 
 class SubscriptionHandler(BaseHandler):
 
-    def __init__(self, node: Node, message_type: MsgType, topic_name: str):
-        super().__init__()
+    def __init__(self, connection: Connection, node: Node, message_type: MsgType, topic_name: str):
+        super().__init__(connection)
 
         self.subscription = node.create_subscription(
             message_type, topic_name, self.callback, 10)
@@ -43,20 +43,20 @@ class SubscriptionHandler(BaseHandler):
     async def handle_message(self, message: Message) -> None:
         if message.type == MessageType.DESTROY_SUBSCRIPTION:
             try:
-                return self.handle_destroy_subscription(message)
+                return await self.handle_destroy_subscription(message)
 
             except Exception as e:
                 self.logger.error('Failed to destroy Subscription! %s' % str(e))
-                self.send_error_response(message, e)
+                await self.send_error_response(message, e)
 
         await super().handle_message(message)
 
-    def handle_destroy_subscription(self, message: Message) -> None:
+    async def handle_destroy_subscription(self, message: Message) -> None:
         if message.content.get('subscription_id') == self.id:
             self.destroy()
-            self.send_response(message, {'subscription_id': self.id})
+            await self.send_response(message, {'subscription_id': self.id})
 
-    def callback(self, msg: MsgType) -> None:
+    async def callback(self, msg: MsgType) -> None:
         try:
             fields = msg.get_fields_and_field_types()
 
@@ -67,7 +67,7 @@ class SubscriptionHandler(BaseHandler):
 
             self.logger.debug('Sending Subscription message: %s' % str(msg_dict))
 
-            self.send_request(MessageType.SUBSCRIPTION_MESSAGE, {
+            await self.send_request(MessageType.SUBSCRIPTION_MESSAGE, {
                 'subscription_id': self.id,
                 'message': msg_dict})
 
