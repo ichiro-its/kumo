@@ -59,7 +59,7 @@ class ClientHandler(BaseHandler):
 
                 self.logger.debug('Responding Client service: %s' % str(res_dict))
 
-                self.send_respond(message, {
+                self.send_response(message, {
                     'client_id': self.id,
                     'response': res_dict})
 
@@ -77,7 +77,7 @@ class ClientHandler(BaseHandler):
 
             except Exception as e:
                 self.logger.error('Failed to destroy Client! %s' % str(e))
-                self.send_error_respond(message, e)
+                self.send_error_response(message, e)
 
         elif message.type == MessageType.CLIENT_REQUEST:
             try:
@@ -85,14 +85,14 @@ class ClientHandler(BaseHandler):
 
             except Exception as e:
                 self.logger.error('Failed to request Client service! %s' % str(e))
-                self.send_error_respond(message, e)
+                self.send_error_response(message, e)
 
         await super().handle_message(message)
 
     def handle_destroy_client(self, message: Message) -> None:
         if message.content.get('client_id') == self.id:
             self.destroy()
-            self.send_respond(message, {'client_id': self.id})
+            self.send_response(message, {'client_id': self.id})
 
     def handle_client_request(self, message: Message) -> None:
         if message.content.get('client_id') == self.id:

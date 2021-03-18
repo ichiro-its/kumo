@@ -47,14 +47,14 @@ class SubscriptionHandler(BaseHandler):
 
             except Exception as e:
                 self.logger.error('Failed to destroy Subscription! %s' % str(e))
-                self.send_error_respond(message, e)
+                self.send_error_response(message, e)
 
         await super().handle_message(message)
 
     def handle_destroy_subscription(self, message: Message) -> None:
         if message.content.get('subscription_id') == self.id:
             self.destroy()
-            self.send_respond(message, {'subscription_id': self.id})
+            self.send_response(message, {'subscription_id': self.id})
 
     def callback(self, msg: MsgType) -> None:
         try:

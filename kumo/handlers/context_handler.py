@@ -39,7 +39,7 @@ class ContextHandler(BaseHandler):
 
             except Exception as e:
                 self.logger.error('Failed to create a Node! %s' % str(e))
-                self.send_error_respond(message, e)
+                self.send_error_response(message, e)
 
         await super().handle_message(message)
 
@@ -48,4 +48,4 @@ class ContextHandler(BaseHandler):
         self.attach(handler)
 
         self.logger.info('Node %s created!' % handler.id)
-        self.send_respond(message, {'node_id': handler.id})
+        self.send_response(message, {'node_id': handler.id})

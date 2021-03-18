@@ -70,13 +70,13 @@ class BaseHandler:
     def send(self, message: Message) -> None:
         self.messages.append(message)
 
-    def send_respond(self, request: Message, content: dict) -> None:
+    def send_response(self, request: Message, content: dict) -> None:
         self.send(Message(request.type, content, request.id))
 
     def send_request(self, type: MessageType, content: dict) -> None:
         self.send(Message(type, content))
 
-    def send_error_respond(self, request: Message, error: Exception) -> None:
+    def send_error_response(self, request: Message, error: Exception) -> None:
         self.send(Message(request.type, {'error': str(error)}, request.id))
 
     async def process(self) -> None:

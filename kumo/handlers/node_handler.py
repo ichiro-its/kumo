@@ -61,7 +61,7 @@ class NodeHandler(BaseHandler):
 
             except Exception as e:
                 self.logger.error('Failed to destroy Node! %s' % str(e))
-                self.send_error_respond(message, e)
+                self.send_error_response(message, e)
 
         elif message.type == MessageType.CREATE_PUBLISHER:
             try:
@@ -69,7 +69,7 @@ class NodeHandler(BaseHandler):
 
             except Exception as e:
                 self.logger.error('Failed to create a Publisher! %s' % str(e))
-                self.send_error_respond(message, e)
+                self.send_error_response(message, e)
 
         elif message.type == MessageType.CREATE_SUBSCRIPTION:
             try:
@@ -77,7 +77,7 @@ class NodeHandler(BaseHandler):
 
             except Exception as e:
                 self.logger.error('Failed to create a Subscription! %s' % str(e))
-                self.send_error_respond(message, e)
+                self.send_error_response(message, e)
 
         elif message.type == MessageType.CREATE_CLIENT:
             try:
@@ -85,7 +85,7 @@ class NodeHandler(BaseHandler):
 
             except Exception as e:
                 self.logger.error('Failed to create a Client! %s' % str(e))
-                self.send_error_respond(message, e)
+                self.send_error_response(message, e)
 
         elif message.type == MessageType.CREATE_SERVICE:
             try:
@@ -93,14 +93,14 @@ class NodeHandler(BaseHandler):
 
             except Exception as e:
                 self.logger.error('Failed to create a Service! %s' % str(e))
-                self.send_error_respond(message, e)
+                self.send_error_response(message, e)
 
         await super().handle_message(message)
 
     def handle_destroy_node(self, message: Message) -> None:
         if message.content.get('node_id') == self.id:
             self.destroy()
-            self.send_respond(message, {'node_id': self.id})
+            self.send_response(message, {'node_id': self.id})
 
     def handle_create_publisher(self, message: Message) -> None:
         if message.content.get('node_id') == self.id:
@@ -111,7 +111,7 @@ class NodeHandler(BaseHandler):
             self.attach(publisher)
 
             self.logger.info('Publisher %s created!' % publisher.id)
-            self.send_respond(message, {'publisher_id': publisher.id})
+            self.send_response(message, {'publisher_id': publisher.id})
 
     def handle_create_subscription(self, message: Message) -> None:
         if message.content.get('node_id') == self.id:
@@ -122,7 +122,7 @@ class NodeHandler(BaseHandler):
             self.attach(subscription)
 
             self.logger.info('Subscription %s created!' % subscription.id)
-            self.send_respond(message, {'subscription_id': subscription.id})
+            self.send_response(message, {'subscription_id': subscription.id})
 
     def handle_create_client(self, message: Message) -> None:
         if message.content.get('node_id') == self.id:
@@ -133,7 +133,7 @@ class NodeHandler(BaseHandler):
             self.attach(client)
 
             self.logger.info('Client %s created!' % client.id)
-            self.send_respond(message, {'client_id': client.id})
+            self.send_response(message, {'client_id': client.id})
 
     def handle_create_service(self, message: Message) -> None:
         if message.content.get('node_id') == self.id:
@@ -144,4 +144,4 @@ class NodeHandler(BaseHandler):
             self.attach(service)
 
             self.logger.info('Service %s created!' % service.id)
-            self.send_respond(message, {'service_id': service.id})
+            self.send_response(message, {'service_id': service.id})

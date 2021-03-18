@@ -46,7 +46,7 @@ class PublisherHandler(BaseHandler):
 
             except Exception as e:
                 self.logger.error('Failed to destroy Publisher! %s' % str(e))
-                self.send_error_respond(message, e)
+                self.send_error_response(message, e)
 
         elif message.type == MessageType.PUBLISHER_MESSAGE:
             try:
@@ -54,14 +54,14 @@ class PublisherHandler(BaseHandler):
 
             except Exception as e:
                 self.logger.error('Failed to publish Publisher message! %s' % str(e))
-                self.send_error_respond(message, e)
+                self.send_error_response(message, e)
 
         await super().handle_message(message)
 
     def handle_destroy_publisher(self, message: Message) -> None:
         if message.content.get('publisher_id') == self.id:
             self.destroy()
-            self.send_respond(message, {'publisher_id': self.id})
+            self.send_response(message, {'publisher_id': self.id})
 
     def handle_publisher_message(self, message: Message) -> None:
         if message.content.get('publisher_id') == self.id:
@@ -76,4 +76,4 @@ class PublisherHandler(BaseHandler):
             self.logger.debug('Publishing Publisher message: %s' % str(msg))
             self.publisher.publish(msg)
 
-            self.send_respond(message, {'publisher_id': self.id})
+            self.send_response(message, {'publisher_id': self.id})

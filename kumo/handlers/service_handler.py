@@ -47,14 +47,14 @@ class ServiceHandler(BaseHandler):
 
             except Exception as e:
                 self.logger.error('Failed to destroy Service! %s' % str(e))
-                self.send_error_respond(message, e)
+                self.send_error_response(message, e)
 
         await super().handle_message(message)
 
     def handle_destroy_service(self, message: Message) -> None:
         if message.content.get('service_id') == self.id:
             self.destroy()
-            self.send_respond(message, {'service_id': self.id})
+            self.send_response(message, {'service_id': self.id})
 
     def callback(self, request: MsgType, response: SrvType) -> None:
         pass
