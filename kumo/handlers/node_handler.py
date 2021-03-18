@@ -25,6 +25,7 @@ from rosidl_runtime_py.utilities import get_message, get_service
 from kumo.handlers.base_handler import BaseHandler
 from kumo.handlers.client_handler import ClientHandler
 from kumo.handlers.publisher_handler import PublisherHandler
+from kumo.handlers.service_handler import ServiceHandler
 from kumo.handlers.subscription_handler import SubscriptionHandler
 from kumo.message import Message, MessageType
 
@@ -86,6 +87,14 @@ class NodeHandler(BaseHandler):
                 self.logger.error('Failed to create a Client! %s' % str(e))
                 self.send_error_respond(message, e)
 
+        elif message.type == MessageType.CREATE_SERVICE:
+            try:
+                return self.handle_create_service(message)
+
+            except Exception as e:
+                self.logger.error('Failed to create a Service! %s' % str(e))
+                self.send_error_respond(message, e)
+
         await super().handle_message(message)
 
     def handle_destroy_node(self, message: Message) -> None:
@@ -125,3 +134,14 @@ class NodeHandler(BaseHandler):
 
             self.logger.info('Client %s created!' % client.id)
             self.send_respond(message, {'client_id': client.id})
+
+    def handle_create_service(self, message: Message) -> None:
+        if message.content.get('node_id') == self.id:
+            service = ServiceHandler(
+                self.node, get_service(message.content.get('service_type')),
+                message.content.get('service_name'))
+
+            self.attach(service)
+
+            self.logger.info('Service %s created!' % service.id)
+            self.send_respond(message, {'service_id': service.id})
