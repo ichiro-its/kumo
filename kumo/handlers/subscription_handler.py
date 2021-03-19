@@ -18,20 +18,21 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
+from rclpy.impl.implementation_singleton import rclpy_implementation
 from rclpy.logging import get_logger
 from rclpy.node import Node, MsgType
 
-from kumo.handlers.base_handler import BaseHandler
-from kumo.message import Message, MessageType
+from kumo.handlers.base_handler import BaseHandler, Connection
+from kumo.message import Message, MessageType, msg_to_dict
 
 
 class SubscriptionHandler(BaseHandler):
 
-    def __init__(self, node: Node, message_type: MsgType, topic_name: str):
-        super().__init__()
+    def __init__(self, connection: Connection, node: Node, message_type: MsgType, topic_name: str):
+        super().__init__(connection)
 
         self.subscription = node.create_subscription(
-            message_type, topic_name, self.callback, 10)
+            message_type, topic_name, None, 10)
 
         self.logger = get_logger('subscription_%s' % self.id)
 
@@ -40,36 +41,44 @@ class SubscriptionHandler(BaseHandler):
             self.logger.warn('Destroying Subscription...')
             self.subscription.destroy()
 
+    async def process(self) -> None:
+        await super().process()
+
+        while True:
+            with self.subscription.handle as capsule:
+                msg_info = rclpy_implementation.rclpy_take(
+                    capsule, self.subscription.msg_type, self.subscription.raw)
+
+                if msg_info is None:
+                    break
+
+                await self.handle_subscription_message(msg_info[0])
+
     async def handle_message(self, message: Message) -> None:
         if message.type == MessageType.DESTROY_SUBSCRIPTION:
             try:
-                return self.handle_destroy_subscription(message)
+                return await self.handle_destroy_subscription(message)
 
             except Exception as e:
                 self.logger.error('Failed to destroy Subscription! %s' % str(e))
-                self.send_error_respond(message, e)
+                await self.send_error_response(message, e)
 
         await super().handle_message(message)
 
-    def handle_destroy_subscription(self, message: Message) -> None:
+    async def handle_destroy_subscription(self, message: Message) -> None:
         if message.content.get('subscription_id') == self.id:
             self.destroy()
-            self.send_respond(message, {'subscription_id': self.id})
+            await self.send_response(message, {'subscription_id': self.id})
 
-    def callback(self, msg: MsgType) -> None:
+    async def handle_subscription_message(self, msg: MsgType) -> None:
         try:
-            fields = msg.get_fields_and_field_types()
-
-            msg_dict = {}
-            for field in fields:
-                if hasattr(msg, field):
-                    msg_dict[field] = getattr(msg, field)
+            msg_dict = msg_to_dict(msg)
 
             self.logger.debug('Sending Subscription message: %s' % str(msg_dict))
 
-            self.send_request(MessageType.SUBSCRIPTION_MESSAGE, {
+            await self.send_request(MessageType.SUBSCRIPTION_MESSAGE, {
                 'subscription_id': self.id,
                 'message': msg_dict})
 
         except Exception as e:
-            self.logger.error('Failed to handle Subscription callback! %s' % str(e))
+            self.logger.error('Failed to handle Subscription message! %s' % str(e))

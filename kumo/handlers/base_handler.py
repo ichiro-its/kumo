@@ -19,15 +19,20 @@
 # THE SOFTWARE.
 
 from typing import Dict, List
+import websockets
 
-from kumo.message import Message, MessageType
+from kumo.message import Message, MessageType, parse_message
+
+Connection = websockets.WebSocketServerProtocol
 
 
 class BaseHandler:
 
     id_counter: int = 0
 
-    def __init__(self):
+    def __init__(self, connection: Connection):
+        self.connection = connection
+
         self.id = str(BaseHandler.id_counter)
         BaseHandler.id_counter += 1
 
@@ -67,17 +72,30 @@ class BaseHandler:
 
             child.parent = None
 
-    def send(self, message: Message) -> None:
-        self.messages.append(message)
+    async def send(self, message: Message) -> None:
+        await self.connection.send(message.toString())
 
-    def send_respond(self, request: Message, content: dict) -> None:
-        self.send(Message(request.type, content, request.id))
+    async def send_response(self, request: Message, content: dict) -> Message:
+        response = Message(request.type, content, request.id)
+        await self.send(response)
 
-    def send_request(self, type: MessageType, content: dict) -> None:
-        self.send(Message(type, content))
+        return response
 
-    def send_error_respond(self, request: Message, error: Exception) -> None:
-        self.send(Message(request.type, {'error': str(error)}, request.id))
+    async def send_request(self, type: MessageType, content: dict) -> Message:
+        request = Message(type, content)
+        await self.send(request)
+
+        return request
+
+    async def send_error_response(self, request: Message, error: Exception) -> Message:
+        error_response = Message(request.type, {'error': str(error)}, request.id)
+        await self.send(error_response)
+
+        return error_response
+
+    async def recover(self) -> Message:
+        message_string = await self.connection.recv()
+        return parse_message(message_string)
 
     async def process(self) -> None:
         inactives = []

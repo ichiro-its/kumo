@@ -18,28 +18,23 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-import asyncio
 from rclpy.logging import get_logger
 import websockets
 
-from kumo.handlers.context_handler import ContextHandler
-from kumo.message import Message, parse_message
-
-WebSocket = websockets.WebSocketServerProtocol
+from kumo.handlers.context_handler import Connection, ContextHandler
 
 
 class Session:
 
     id_counter: int = 0
 
-    def __init__(self, websocket: WebSocket):
+    def __init__(self, connection: Connection):
         self.id = str(Session.id_counter)
         Session.id_counter += 1
 
-        self.websocket = websocket
         self.logger = get_logger('session_%s' % self.id)
 
-        self.context = ContextHandler()
+        self.context = ContextHandler(connection)
 
     def cleanup(self) -> None:
         self.context.destroy()
@@ -51,20 +46,6 @@ class Session:
             try:
                 await self.context.process()
 
-                while len(self.context.messages) > 0:
-                    message: Message = self.context.messages.pop()
-                    message_string: str = message.toString()
-
-                    self.logger.debug('Sending message: %s' % message_string)
-                    await self.websocket.send(message_string)
-
-                while True:
-                    try:
-                        await self.handle_message()
-
-                    except asyncio.TimeoutError:
-                        break
-
             except websockets.ConnectionClosed as e:
                 self.logger.warn('Session closed! %s' % str(e))
                 return self.cleanup()
@@ -75,19 +56,3 @@ class Session:
 
             except Exception as e:
                 self.logger.error('Something happened! %s' % str(e))
-
-    async def handle_message(self) -> None:
-        message_string = await asyncio.wait_for(self.websocket.recv(), 0.01)
-        self.logger.debug('Received message: %s' % message_string)
-
-        try:
-            message = parse_message(message_string)
-
-            try:
-                await self.context.handle_message(message)
-
-            except Exception as e:
-                self.logger.error('Failed to handle request! %s' % str(e))
-
-        except Exception as e:
-            self.logger.error('Failed to parse request! %s' % str(e))
