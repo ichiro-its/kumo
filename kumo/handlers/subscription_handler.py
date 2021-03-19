@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
+from rclpy.impl.implementation_singleton import rclpy_implementation
 from rclpy.logging import get_logger
 from rclpy.node import Node, MsgType
 
@@ -31,7 +32,7 @@ class SubscriptionHandler(BaseHandler):
         super().__init__(connection)
 
         self.subscription = node.create_subscription(
-            message_type, topic_name, self.callback, 10)
+            message_type, topic_name, None, 10)
 
         self.logger = get_logger('subscription_%s' % self.id)
 
@@ -39,6 +40,19 @@ class SubscriptionHandler(BaseHandler):
         if super().destroy():
             self.logger.warn('Destroying Subscription...')
             self.subscription.destroy()
+
+    async def process(self) -> None:
+        await super().process()
+
+        while True:
+            with self.subscription.handle as capsule:
+                msg_info = rclpy_implementation.rclpy_take(
+                    capsule, self.subscription.msg_type, self.subscription.raw)
+
+                if msg_info is None:
+                    break
+
+                await self.handle_subscription_message(msg_info[0])
 
     async def handle_message(self, message: Message) -> None:
         if message.type == MessageType.DESTROY_SUBSCRIPTION:
@@ -56,7 +70,7 @@ class SubscriptionHandler(BaseHandler):
             self.destroy()
             await self.send_response(message, {'subscription_id': self.id})
 
-    async def callback(self, msg: MsgType) -> None:
+    async def handle_subscription_message(self, msg: MsgType) -> None:
         try:
             msg_dict = msg_to_dict(msg)
 
@@ -67,4 +81,4 @@ class SubscriptionHandler(BaseHandler):
                 'message': msg_dict})
 
         except Exception as e:
-            self.logger.error('Failed to handle Subscription callback! %s' % str(e))
+            self.logger.error('Failed to handle Subscription message! %s' % str(e))

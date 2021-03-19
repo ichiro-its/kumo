@@ -37,6 +37,7 @@ class MessageType(Enum):
     CLIENT_REQUEST = 'CLIENT_REQUEST'
     CREATE_SERVICE = 'CREATE_SERVICE'
     DESTROY_SERVICE = 'DESTROY_SERVICE'
+    SERVICE_RESPONSE = 'SERVICE_RESPONSE'
 
 
 class Message:
@@ -64,6 +65,7 @@ def parse_message(message: str) -> Message:
                    message_json.get('content', {}),
                    message_json.get('id', None))
 
+
 def msg_to_dict(msg: MsgType) -> dict:
     fields = msg.get_fields_and_field_types()
 
@@ -73,6 +75,7 @@ def msg_to_dict(msg: MsgType) -> dict:
             msg_dict[field] = getattr(msg, field)
 
     return msg_dict
+
 
 def dict_to_msg(msg_dict: dict, msg: MsgType) -> MsgType:
     fields = msg.get_fields_and_field_types()

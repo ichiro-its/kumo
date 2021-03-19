@@ -18,11 +18,14 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
+from asyncio import Future
+from rclpy.impl.implementation_singleton import rclpy_implementation
 from rclpy.logging import get_logger
-from rclpy.node import Node, MsgType, SrvType
+from rclpy.node import Node, SrvType, SrvTypeRequest
+from typing import List
 
 from kumo.handlers.base_handler import BaseHandler, Connection
-from kumo.message import Message, MessageType
+from kumo.message import dict_to_msg, Message, MessageType, msg_to_dict
 
 
 class ServiceHandler(BaseHandler):
@@ -33,7 +36,9 @@ class ServiceHandler(BaseHandler):
         super().__init__(connection)
 
         self.service = node.create_service(
-            service_type, service_name, self.callback)
+            service_type, service_name, None)
+
+        self.request_headers: List[(Message, any)] = []
 
         self.logger = get_logger('service_%s' % self.id)
 
@@ -41,6 +46,26 @@ class ServiceHandler(BaseHandler):
         if super().destroy():
             self.logger.warn('Destroying Service...')
             self.service.destroy()
+
+    async def process(self) -> None:
+        await super().process()
+
+        while True:
+            with self.service.handle as capsule:
+                req_header = rclpy_implementation.rclpy_take_request(
+                    capsule, self.service.srv_type.Request)
+
+                if req_header is None:
+                    break
+
+                req, header = req_header
+                req: SrvTypeRequest = req
+
+                request = await self.send_request(MessageType.SERVICE_RESPONSE, {
+                    'service_id': self.id,
+                    'request': msg_to_dict(req)})
+
+                self.request_headers.append((request, header))
 
     async def handle_message(self, message: Message) -> None:
         if message.type == MessageType.DESTROY_SERVICE:
@@ -51,6 +76,14 @@ class ServiceHandler(BaseHandler):
                 self.logger.error('Failed to destroy Service! %s' % str(e))
                 await self.send_error_response(message, e)
 
+        elif message.type == MessageType.SERVICE_RESPONSE:
+            try:
+                return await self.handle_service_response(message)
+
+            except Exception as e:
+                self.logger.error('Failed to handle Service response! %s' % str(e))
+                await self.send_error_response(message, e)
+
         await super().handle_message(message)
 
     async def handle_destroy_service(self, message: Message) -> None:
@@ -58,5 +91,16 @@ class ServiceHandler(BaseHandler):
             self.destroy()
             await self.send_response(message, {'service_id': self.id})
 
-    async def callback(self, request: MsgType, response: SrvType) -> None:
-        pass
+    async def handle_service_response(self, message: Message) -> None:
+        new_request_headers: List[(Message, Future)] = []
+        for (request, header) in self.request_headers:
+            request: Message = request
+
+            if message.type == request.type and message.id == request.id:
+                res_dict = message.content.get('response')
+                res = dict_to_msg(res_dict, self.service.srv_type.Response())
+                self.service.send_response(res, header)
+            else:
+                new_request_headers.append((request, header))
+
+        self.request_headers = new_request_headers

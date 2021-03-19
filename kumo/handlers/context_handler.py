@@ -41,7 +41,8 @@ class ContextHandler(BaseHandler):
 
         while True:
             try:
-                await self.handle_message(await self.recover())
+                message = await asyncio.wait_for(self.recover(), 0.01)
+                await self.handle_message(message)
 
             except asyncio.TimeoutError:
                 break

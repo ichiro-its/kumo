@@ -18,7 +18,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-import asyncio
 from typing import Dict, List
 import websockets
 
@@ -76,17 +75,26 @@ class BaseHandler:
     async def send(self, message: Message) -> None:
         await self.connection.send(message.toString())
 
-    async def send_response(self, request: Message, content: dict) -> None:
-        await self.send(Message(request.type, content, request.id))
+    async def send_response(self, request: Message, content: dict) -> Message:
+        response = Message(request.type, content, request.id)
+        await self.send(response)
 
-    async def send_request(self, type: MessageType, content: dict) -> None:
-        await self.send(Message(type, content))
+        return response
 
-    async def send_error_response(self, request: Message, error: Exception) -> None:
-        await self.send(Message(request.type, {'error': str(error)}, request.id))
+    async def send_request(self, type: MessageType, content: dict) -> Message:
+        request = Message(type, content)
+        await self.send(request)
+
+        return request
+
+    async def send_error_response(self, request: Message, error: Exception) -> Message:
+        error_response = Message(request.type, {'error': str(error)}, request.id)
+        await self.send(error_response)
+
+        return error_response
 
     async def recover(self) -> Message:
-        message_string = await asyncio.wait_for(self.connection.recv(), 0.01)
+        message_string = await self.connection.recv()
         return parse_message(message_string)
 
     async def process(self) -> None:

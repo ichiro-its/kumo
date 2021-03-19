@@ -18,9 +18,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-from asyncio import Future
+from rclpy.impl.implementation_singleton import rclpy_implementation
 from rclpy.logging import get_logger
-from rclpy.node import Node, MsgType, SrvType
+from rclpy.node import Node, SrvType, SrvTypeResponse
 from typing import List
 
 from kumo.handlers.base_handler import BaseHandler, Connection
@@ -35,7 +35,7 @@ class ClientHandler(BaseHandler):
         super().__init__(connection)
 
         self.client = node.create_client(service_type, service_name)
-        self.message_futures: List[(Message, Future)] = []
+        self.requests: List[Message] = []
 
         self.logger = get_logger('client_%s' % self.id)
 
@@ -47,24 +47,26 @@ class ClientHandler(BaseHandler):
     async def process(self) -> None:
         await super().process()
 
-        new_message_futures: List[(Message, Future)] = []
-        for (message, future) in self.message_futures:
-            message: Message = message
-            future: Future = future
+        ress: List[SrvTypeResponse] = []
+        while True:
+            with self.client.handle as capsule:
+                _, res = rclpy_implementation.rclpy_take_response(
+                    capsule, self.client.srv_type.Response)
 
-            if future.done():
-                res_dict = msg_to_dict(future.result())
+                if res is None:
+                    break
 
-                self.logger.debug('Responding Client service: %s' % str(res_dict))
+                ress.append(res)
 
-                await self.send_response(message, {
-                    'client_id': self.id,
-                    'response': res_dict})
+        for request, res in zip(self.requests, ress):
+            request: Message = request
+            res: SrvTypeResponse = res
 
-            else:
-                new_message_futures.append((message, future))
+            await self.send_response(request, {
+                'client_id': self.id,
+                'response': msg_to_dict(res)})
 
-        self.message_futures = new_message_futures
+            self.requests.remove(request)
 
     async def handle_message(self, message: Message) -> None:
         if message.type == MessageType.DESTROY_CLIENT:
@@ -95,7 +97,7 @@ class ClientHandler(BaseHandler):
             req_dict: dict = message.content.get('request')
             req = dict_to_msg(req_dict, self.client.srv_type.Request())
 
-            self.logger.debug('Requesting client service: %s' % str(req))
-            future = self.client.call_async(req)
+            self.logger.info('Requesting client service: %s' % str(req))
+            self.client.call_async(req)
 
-            self.message_futures.append((message, future))
+            self.requests.append(message)

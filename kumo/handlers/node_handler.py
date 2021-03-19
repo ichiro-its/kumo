@@ -44,15 +44,6 @@ class NodeHandler(BaseHandler):
             self.logger.warn('Destroying Node...')
             self.node.destroy_node()
 
-    async def process(self) -> None:
-        await super().process()
-
-        try:
-            rclpy.spin_once(self.node, timeout_sec=0)
-
-        except Exception as e:
-            self.logger.error('Failed to spin Node! %s' % str(e))
-
     async def handle_message(self, message: Message) -> None:
 
         if message.type == MessageType.DESTROY_NODE:
