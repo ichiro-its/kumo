@@ -1,4 +1,4 @@
-name: ROS 2 CI
+name: Build and Test
 on:
   pull_request:
     branches: [ master ]
@@ -7,7 +7,6 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
-    name: Build and test the project
     steps:
       - name: Checkout
         uses: actions/checkout@v2.3.4

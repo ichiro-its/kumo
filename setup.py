@@ -12,6 +12,7 @@ setup(
         ('share/' + package_name, ['package.xml']),
     ],
     install_requires=[
+        'argparse',
         'setuptools',
         'websockets'
     ],
@@ -19,7 +20,7 @@ setup(
     maintainer='Alfi Maulana',
     maintainer_email='alfi.maulana.f@gmail.com',
     description='WebSocket bridge for ROS 2',
-    license='TODO: License declaration',
+    license='MIT License',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
