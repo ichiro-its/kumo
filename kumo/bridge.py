@@ -18,18 +18,20 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
+import argparse
 import asyncio
 import rclpy
 import websockets
+from typing import List
 
 from kumo.session import Connection, Session
 
 
 class Bridge:
 
-    def __init__(self, port: int, host: str):
+    def __init__(self, port: int, hosts: List[str]):
         self.port = port
-        self.host = host
+        self.hosts = hosts
 
         self.logger = rclpy.logging.get_logger('bridge')
 
@@ -40,10 +42,9 @@ class Bridge:
         rclpy.init()
 
         try:
-            self.logger.info('Starting bridge on %s with port %d...'
-                             % (self.host, self.port))
+            self.logger.info('Starting bridge server on port %d...' % (self.port))
 
-            websocket = websockets.serve(self.listen, self.host, self.port)
+            websocket = websockets.serve(self.listen, self.hosts, self.port)
 
             asyncio.get_event_loop().run_until_complete(websocket)
             asyncio.get_event_loop().run_forever()
@@ -58,7 +59,17 @@ class Bridge:
 
 
 def main():
-    Bridge(8080, None).run()
+    parser = argparse.ArgumentParser(prog='ros2 run kumo bridge')
+
+    parser.add_argument('--port', type=int, default=8080,
+                        help='specify the port number of the bridge server')
+
+    parser.add_argument('--hosts', nargs='+',
+                        help='specify host addresses to be bind by the bridge server')
+
+    arg = parser.parse_args()
+
+    Bridge(arg.port, arg.hosts).run()
 
 
 if __name__ == '__main__':
