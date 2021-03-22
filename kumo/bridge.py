@@ -24,7 +24,7 @@ import rclpy
 import websockets
 from typing import List
 
-from kumo.session import Connection, Session
+from kumo.handlers.session_handler import Connection, SessionHandler
 
 
 class Bridge:
@@ -36,7 +36,23 @@ class Bridge:
         self.logger = rclpy.logging.get_logger('bridge')
 
     async def listen(self, connection: Connection, path: str) -> None:
-        await Session(connection).listen()
+        self.logger.info('Session started!')
+        session = SessionHandler(connection)
+
+        while True:
+            try:
+                await session.process()
+
+            except websockets.ConnectionClosed as e:
+                self.logger.warn('Session closed! %s' % str(e))
+                return session.destroy()
+
+            except KeyboardInterrupt as e:
+                session.destroy()
+                raise e
+
+            except Exception as e:
+                self.logger.error('Something happened! %s' % str(e))
 
     def run(self) -> None:
         rclpy.init()

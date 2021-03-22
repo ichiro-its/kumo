@@ -97,7 +97,7 @@ class ClientHandler(BaseHandler):
             req_dict: dict = message.content.get('request')
             req = dict_to_msg(req_dict, self.client.srv_type.Request())
 
-            self.logger.info('Requesting client service: %s' % str(req))
+            self.logger.debug('Requesting client service: %s' % str(req))
             self.client.call_async(req)
 
             self.requests.append(message)
