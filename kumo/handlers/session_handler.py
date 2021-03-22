@@ -18,41 +18,49 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
+import asyncio
 from rclpy.logging import get_logger
-import websockets
 
-from kumo.handlers.context_handler import Connection, ContextHandler
+from kumo.handlers.base_handler import BaseHandler, Connection
+from kumo.handlers.node_handler import NodeHandler
+from kumo.message import Message, MessageType
 
 
-class Session:
-
-    id_counter: int = 0
+class SessionHandler(BaseHandler):
 
     def __init__(self, connection: Connection):
-        self.id = str(Session.id_counter)
-        Session.id_counter += 1
+        super().__init__(connection)
 
         self.logger = get_logger('session_%s' % self.id)
 
-        self.context = ContextHandler(connection)
+    async def process(self) -> None:
+        await super().process()
 
-    def cleanup(self) -> None:
-        self.context.destroy()
-
-    async def listen(self) -> None:
-        self.logger.info('Session started!')
+        while len(self.messages) > 0:
+            await self.handle_message(self.messages.pop())
 
         while True:
             try:
-                await self.context.process()
+                message = await asyncio.wait_for(self.recover(), 0.01)
+                await self.handle_message(message)
 
-            except websockets.ConnectionClosed as e:
-                self.logger.warn('Session closed! %s' % str(e))
-                return self.cleanup()
+            except asyncio.TimeoutError:
+                break
 
-            except KeyboardInterrupt as e:
-                self.cleanup()
-                raise e
+    async def handle_message(self, message: Message) -> None:
+        if message.type == MessageType.CREATE_NODE:
+            try:
+                return await self.handle_create_node(message)
 
             except Exception as e:
-                self.logger.error('Something happened! %s' % str(e))
+                self.logger.error('Failed to create a Node! %s' % str(e))
+                await self.send_error_response(message, e)
+
+        await super().handle_message(message)
+
+    async def handle_create_node(self, message: Message) -> None:
+        handler = NodeHandler(self.connection, message.content.get('node_name'))
+        self.attach(handler)
+
+        self.logger.info('Node %s created!' % handler.id)
+        await self.send_response(message, {'node_id': handler.id})
