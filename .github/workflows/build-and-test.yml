@@ -13,4 +13,7 @@ jobs:
       - name: Build and test
         uses: ichiro-its/ros2-ci@v0.4.1
         with:
+          ros2-distro: foxy
+          apt-packages: git
           pip-packages: websockets
+          pre-build: git clone https://github.com/ichiro-its/kumo_json /ws/kumo_json
