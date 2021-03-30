@@ -18,13 +18,14 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
+from kumo_json import dict_to_msg, msg_to_dict
 from rclpy.impl.implementation_singleton import rclpy_implementation
 from rclpy.logging import get_logger
 from rclpy.node import Node, SrvType, SrvTypeResponse
 from typing import List
 
 from kumo.handlers.base_handler import BaseHandler, Connection
-from kumo.message import dict_to_msg, Message, MessageType, msg_to_dict
+from kumo.message import Message, MessageType
 
 
 class ClientHandler(BaseHandler):
