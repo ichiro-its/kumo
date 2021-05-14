@@ -11,6 +11,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2.3.4
       - name: Build and test
-        uses: ichiro-its/ros2-ci@v0.4.1
+        uses: ichiro-its/ros2-ci@v1.0.0
         with:
+          ros2-distro: foxy
           pip-packages: websockets
+          external-repos: ichiro-its/kumo_json
