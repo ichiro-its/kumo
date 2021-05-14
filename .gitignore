@@ -1,6 +1,17 @@
-__pycache__
-*.pyc
+.*
+
+!.git*
 
 build
 install
 log
+
+debian
+*.egg-info
+
+CHANGELOG.rst
+
+*.deb
+
+__pycache__
+*.pyc

@@ -6,9 +6,13 @@
   <description>WebSocket bridge for ROS 2</description>
   <maintainer email="alfi.maulana.f@gmail.com">Alfi Maulana</maintainer>
   <license>MIT License</license>
-  <exec_depend>kumo_json</exec_depend>
-  <exec_depend>rclpy</exec_depend>
-  <exec_depend>rosidl_runtime_py</exec_depend>
+  <url>https://github.com/ichiro-its/kumo</url>
+  <depend>kumo_json</depend>
+  <depend>python3-argparse</depend>
+  <depend>python3-asyncio</depend>
+  <depend>python3-websockets</depend>
+  <depend>rclpy</depend>
+  <depend>rosidl_runtime_py</depend>
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>
   <test_depend>ament_pep257</test_depend>
