@@ -18,7 +18,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-import argparse
 import asyncio
 import rclpy
 import websockets
@@ -72,21 +71,3 @@ class Bridge:
             self.logger.error('Failed to start bridge! %s' % str(e))
 
         rclpy.shutdown()
-
-
-def main():
-    parser = argparse.ArgumentParser(prog='ros2 run kumo bridge')
-
-    parser.add_argument('--port', type=int, default=8080,
-                        help='specify the port number of the bridge server')
-
-    parser.add_argument('--hosts', nargs='+',
-                        help='specify host addresses to be bind by the bridge server')
-
-    arg = parser.parse_args()
-
-    Bridge(arg.port, arg.hosts).run()
-
-
-if __name__ == '__main__':
-    main()
