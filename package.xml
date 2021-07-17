@@ -9,7 +9,6 @@
   <url>https://github.com/ichiro-its/kumo</url>
   <buildtool_depend>ament_cmake</buildtool_depend>
   <buildtool_depend>ament_cmake_python</buildtool_depend>
-  <depend>python3-argparse</depend>
   <depend>python3-websockets</depend>
   <depend>rclpy</depend>
   <depend>rosidl_runtime_py</depend>
