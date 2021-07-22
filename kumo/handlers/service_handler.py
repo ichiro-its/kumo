@@ -19,11 +19,11 @@
 # THE SOFTWARE.
 
 from asyncio import Future
-from kumo_json import dict_to_msg, msg_to_dict
 from rclpy.impl.implementation_singleton import rclpy_implementation
 from rclpy.logging import get_logger
 from rclpy.node import Node, SrvType, SrvTypeRequest
 from typing import List
+from yakusha import dict_to_msg, msg_to_dict
 
 from kumo.handlers.base_handler import BaseHandler, Connection
 from kumo.message import Message, MessageType
