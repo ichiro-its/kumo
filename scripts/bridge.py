@@ -33,7 +33,7 @@ def main():
     parser.add_argument('--hosts', nargs='+',
                         help='specify host addresses to be bind by the bridge server')
 
-    arg = parser.parse_args()
+    (arg, _) = parser.parse_known_args()
 
     Bridge(arg.port, arg.hosts).run()
 
